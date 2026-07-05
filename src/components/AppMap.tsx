@@ -1,6 +1,7 @@
-import React, { useEffect, useRef } from 'react';
-import { StyleSheet, View } from 'react-native';
-import { WebView } from 'react-native-webview';
+import React, { useEffect, useRef, useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { WebView, type WebViewMessageEvent } from 'react-native-webview';
+import Constants from 'expo-constants';
 import { colors, radius } from '@/theme';
 import type { LatLng } from '@/types';
 
@@ -8,111 +9,120 @@ interface Props {
   pickup: LatLng;
   destination?: LatLng | null;
   driver?: LatLng | null;
-  /** Подпись к маркеру водителя (имя). */
-  driverLabel?: string;
+  /** Текст на карточке подачи (напр. «Подача 8 мин»). */
+  pickupBadge?: string | null;
+  /** Показывать кнопку «моё местоположение». */
+  showLocate?: boolean;
   style?: object;
 }
 
-/**
- * Карта на OpenStreetMap-данных с тайлами CARTO (Leaflet в WebView).
- *
- * Полностью бесплатно, без API-ключей и регистрации — подходит там, где
- * Google Maps недоступен. Тайлы CARTO дают чистый светлый стиль. Маркеры
- * (подача, назначение, водитель) и маршрут обновляются через
- * injectJavaScript, поэтому движущийся водитель отрисовывается плавно.
- */
-const HTML = `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
-  <style>
-    html, body, #map { height: 100%; margin: 0; padding: 0; background: #eaf0ee; }
-    .leaflet-container { background: #eaf0ee; }
-    .pin { filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)); }
-    .car {
-      width: 34px; height: 34px; border-radius: 50%;
-      background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,.35);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 19px; border: 2px solid #0A6B4E;
-    }
-  </style>
-</head>
-<body>
-  <div id="map"></div>
-  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script>
-    var map = L.map('map', { zoomControl: false, attributionControl: false })
-      .setView([55.751, 37.618], 12);
-    L.tileLayer(
-      'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-      { maxZoom: 20, subdomains: 'abcd' }
-    ).addTo(map);
+const YANDEX_KEY: string = Constants.expoConfig?.extra?.yandex?.mapsKey ?? '';
 
-    function pinSvg(color) {
-      return '<svg class="pin" width="30" height="42" viewBox="0 0 30 42" xmlns="http://www.w3.org/2000/svg">' +
-        '<path d="M15 0C6.7 0 0 6.7 0 15c0 11 15 27 15 27s15-16 15-27C30 6.7 23.3 0 15 0z" fill="' + color + '"/>' +
-        '<circle cx="15" cy="15" r="5.5" fill="#fff"/></svg>';
-    }
-    function pin(lat, lng, color) {
-      return L.marker([lat, lng], { icon: L.divIcon({
-        className: '', html: pinSvg(color),
-        iconSize: [30, 42], iconAnchor: [15, 42],
-      }) });
-    }
-    function car(lat, lng) {
-      return L.marker([lat, lng], { icon: L.divIcon({
-        className: '', html: '<div class="car">🚕</div>',
-        iconSize: [34, 34], iconAnchor: [17, 17],
-      }) });
-    }
+/** Общий CSS маркеров/карточки для обоих движков. */
+const SHARED_CSS = `
+  html, body, #map { height:100%; margin:0; padding:0; background:#eaf0ee; }
+  .badge { display:inline-block; background:#fff; color:#1A1D1B; font:700 13px -apple-system,Roboto,sans-serif;
+    padding:7px 11px; border-radius:12px; box-shadow:0 3px 8px rgba(0,0,0,.25); white-space:nowrap; }
+  .badge .ico { color:#0A6B4E; margin-right:5px; }
+  .car { width:36px; height:36px; border-radius:50%; background:#fff; border:2px solid #0A6B4E;
+    box-shadow:0 2px 6px rgba(0,0,0,.35); display:flex; align-items:center; justify-content:center; font-size:20px; }
+`;
 
-    var layers = [];
-    window.updateMap = function (d) {
-      layers.forEach(function (l) { map.removeLayer(l); });
-      layers = [];
-      var pts = [];
-      var pu = d.pickup, dst = d.destination, drv = d.driver;
+const PIN_SVG = (color: string) =>
+  `<svg width="30" height="42" viewBox="0 0 30 42" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))">` +
+  `<path d="M15 0C6.7 0 0 6.7 0 15c0 11 15 27 15 27s15-16 15-27C30 6.7 23.3 0 15 0z" fill="${color}"/>` +
+  `<circle cx="15" cy="15" r="5.5" fill="#fff"/></svg>`;
 
-      if (pu && dst) {
-        var line = L.polyline(
-          [[pu.latitude, pu.longitude], [dst.latitude, dst.longitude]],
-          { color: '#0A6B4E', weight: 4, opacity: 0.75, dashArray: '1 8', lineCap: 'round' }
-        ).addTo(map);
-        layers.push(line);
+/** Яндекс.Карты 2.1. При сбое загрузки шлёт MAP_FAILED в RN для отката. */
+const yandexHtml = (key: string) => `<!DOCTYPE html><html><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+<style>${SHARED_CSS}</style></head><body>
+<div id="map"></div>
+<script>
+  function fail(){ if(window.ReactNativeWebView) window.ReactNativeWebView.postMessage('MAP_FAILED'); }
+  var s=document.createElement('script');
+  s.src='https://api-maps.yandex.ru/2.1/?apikey=${key}&lang=ru_RU';
+  s.onerror=fail;
+  document.head.appendChild(s);
+  var t=setTimeout(function(){ if(!window.ymaps||!window.ymaps.Map) fail(); }, 8000);
+
+  s.onload=function(){ ymaps.ready(function(){
+    clearTimeout(t);
+    var map=new ymaps.Map('map',{center:[55.751,37.618],zoom:13,controls:[]},{suppressMapOpenBlock:true,yandexMapDisablePoiInteractivity:true});
+    var last=null;
+    var PinLayout=ymaps.templateLayoutFactory.createClass(
+      '<div style="position:absolute;transform:translate(-50%,-100%);text-align:center;white-space:nowrap">'+
+      '{% if properties.badge %}<div class="badge"><span class="ico">◈</span>$[properties.badge]</div><div style="height:4px"></div>{% endif %}'+
+      '$[properties.svg]</div>');
+    var CarLayout=ymaps.templateLayoutFactory.createClass(
+      '<div style="position:absolute;transform:translate(-50%,-50%)"><div class="car">🚕</div></div>');
+    window.updateMap=function(d){
+      map.geoObjects.removeAll();
+      var pts=[];
+      if(d.pickup&&d.destination){
+        map.geoObjects.add(new ymaps.Polyline([[d.pickup.latitude,d.pickup.longitude],[d.destination.latitude,d.destination.longitude]],{},{strokeColor:'#0A6B4E',strokeWidth:4,strokeStyle:'shortdash',strokeOpacity:0.8}));
       }
-      if (pu) {
-        var a = pin(pu.latitude, pu.longitude, '#2E9E5B').addTo(map);
-        layers.push(a); pts.push([pu.latitude, pu.longitude]);
-      }
-      if (dst) {
-        var b = pin(dst.latitude, dst.longitude, '#D24B4B').addTo(map);
-        layers.push(b); pts.push([dst.latitude, dst.longitude]);
-      }
-      if (drv) {
-        var c = car(drv.latitude, drv.longitude).addTo(map);
-        layers.push(c); pts.push([drv.latitude, drv.longitude]);
-      }
-      if (pts.length === 1) map.setView(pts[0], 15);
-      else if (pts.length > 1) map.fitBounds(pts, { padding: [60, 70] });
+      if(d.pickup){ last=[d.pickup.latitude,d.pickup.longitude];
+        map.geoObjects.add(new ymaps.Placemark(last,{badge:d.pickupBadge||'',svg:'${PIN_SVG('#2E9E5B')}'},{iconLayout:PinLayout,iconShape:{type:'Rectangle',coordinates:[[-16,-46],[16,2]]}}));
+        pts.push(last); }
+      if(d.destination){ var dd=[d.destination.latitude,d.destination.longitude];
+        map.geoObjects.add(new ymaps.Placemark(dd,{badge:'',svg:'${PIN_SVG('#D24B4B')}'},{iconLayout:PinLayout,iconShape:{type:'Rectangle',coordinates:[[-16,-46],[16,2]]}}));
+        pts.push(dd); }
+      if(d.driver){ var dr=[d.driver.latitude,d.driver.longitude];
+        map.geoObjects.add(new ymaps.Placemark(dr,{},{iconLayout:CarLayout,iconShape:{type:'Circle',coordinates:[0,0],radius:18}}));
+        pts.push(dr); }
+      if(pts.length===1) map.setCenter(pts[0],15,{duration:250});
+      else if(pts.length>1) map.setBounds(ymaps.util.bounds.fromPoints(pts),{checkZoomRange:true,zoomMargin:70,duration:250});
     };
-  </script>
-</body>
-</html>`;
+    window.recenter=function(){ if(last) map.setCenter(last,15,{duration:300}); };
+    if(window.__pending) window.updateMap(window.__pending);
+  }); };
+  window.updateMap=function(d){ window.__pending=d; };
+</script></body></html>`;
+
+/** OpenStreetMap/CARTO через Leaflet — запасной движок без ключей. */
+const LEAFLET_HTML = `<!DOCTYPE html><html><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"/>
+<style>${SHARED_CSS} .leaflet-container{background:#eaf0ee}</style></head><body>
+<div id="map"></div>
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  var map=L.map('map',{zoomControl:false,attributionControl:false}).setView([55.751,37.618],13);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{maxZoom:20,subdomains:'abcd'}).addTo(map);
+  var layers=[],last=null;
+  function pinIcon(color,badge){ var b=badge?('<div class="badge" style="position:absolute;left:50%;bottom:46px;transform:translateX(-50%)"><span class="ico">◈</span>'+badge+'</div>'):'';
+    return L.divIcon({className:'',html:'<div style="position:relative">'+b+'${PIN_SVG('COLORPH')}'.replace('COLORPH',color)+'</div>',iconSize:[30,42],iconAnchor:[15,42]}); }
+  window.updateMap=function(d){
+    layers.forEach(function(l){map.removeLayer(l)}); layers=[]; var pts=[];
+    if(d.pickup&&d.destination){ layers.push(L.polyline([[d.pickup.latitude,d.pickup.longitude],[d.destination.latitude,d.destination.longitude]],{color:'#0A6B4E',weight:4,opacity:0.8,dashArray:'1 8'}).addTo(map)); }
+    if(d.pickup){ last=[d.pickup.latitude,d.pickup.longitude]; layers.push(L.marker(last,{icon:pinIcon('#2E9E5B',d.pickupBadge)}).addTo(map)); pts.push(last); }
+    if(d.destination){ var dd=[d.destination.latitude,d.destination.longitude]; layers.push(L.marker(dd,{icon:pinIcon('#D24B4B','')}).addTo(map)); pts.push(dd); }
+    if(d.driver){ var dr=[d.driver.latitude,d.driver.longitude]; layers.push(L.marker(dr,{icon:L.divIcon({className:'',html:'<div class="car">🚕</div>',iconSize:[36,36],iconAnchor:[18,18]})}).addTo(map)); pts.push(dr); }
+    if(pts.length===1) map.setView(pts[0],15);
+    else if(pts.length>1) map.fitBounds(pts,{padding:[60,70]});
+  };
+  window.recenter=function(){ if(last) map.setView(last,15); };
+</script></body></html>`;
 
 export const AppMap: React.FC<Props> = ({
   pickup,
   destination,
   driver,
+  pickupBadge,
+  showLocate = true,
   style,
 }) => {
   const ref = useRef<WebView>(null);
+  const [engine, setEngine] = useState<'yandex' | 'leaflet'>(
+    YANDEX_KEY ? 'yandex' : 'leaflet',
+  );
 
   const payload = JSON.stringify({
     pickup,
     destination: destination ?? null,
     driver: driver ?? null,
+    pickupBadge: pickupBadge ?? '',
   });
 
   const push = () => {
@@ -124,20 +134,40 @@ export const AppMap: React.FC<Props> = ({
   useEffect(() => {
     push();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [payload]);
+  }, [payload, engine]);
+
+  const onMessage = (e: WebViewMessageEvent) => {
+    if (e.nativeEvent.data === 'MAP_FAILED' && engine !== 'leaflet') {
+      setEngine('leaflet');
+    }
+  };
+
+  const html = engine === 'yandex' ? yandexHtml(YANDEX_KEY) : LEAFLET_HTML;
 
   return (
     <View style={[styles.wrap, style]}>
       <WebView
+        key={engine}
         ref={ref}
         originWhitelist={['*']}
-        source={{ html: HTML }}
+        source={{ html, baseUrl: 'https://mustaxi.app' }}
         onLoadEnd={push}
+        onMessage={onMessage}
         style={styles.web}
         scrollEnabled={false}
         overScrollMode="never"
         androidLayerType="hardware"
       />
+      {showLocate && (
+        <Pressable
+          style={styles.locate}
+          onPress={() =>
+            ref.current?.injectJavaScript('window.recenter && window.recenter(); true;')
+          }
+        >
+          <Text style={styles.locateIcon}>➤</Text>
+        </Pressable>
+      )}
     </View>
   );
 };
@@ -150,4 +180,25 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceAlt,
   },
   web: { flex: 1, backgroundColor: colors.surfaceAlt },
+  locate: {
+    position: 'absolute',
+    right: 14,
+    bottom: 14,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 5,
+  },
+  locateIcon: {
+    fontSize: 20,
+    color: colors.primary,
+    transform: [{ rotate: '-45deg' }],
+  },
 });

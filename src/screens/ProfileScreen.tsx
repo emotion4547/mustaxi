@@ -2,8 +2,6 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { CompositeScreenProps } from '@react-navigation/native';
-import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 
 import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
@@ -11,12 +9,9 @@ import { SegmentedControl } from '@/components/SegmentedControl';
 import { useApp } from '@/store/AppContext';
 import { colors, fontSize, spacing } from '@/theme';
 import type { Locale } from '@/i18n';
-import type { MainTabParamList, RootStackParamList } from '@/navigation/types';
+import type { RootStackParamList } from '@/navigation/types';
 
-type Props = CompositeScreenProps<
-  BottomTabScreenProps<MainTabParamList, 'Profile'>,
-  NativeStackScreenProps<RootStackParamList>
->;
+type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
 
 export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
   const { t, profile, locale, setLocale, logout } = useApp();

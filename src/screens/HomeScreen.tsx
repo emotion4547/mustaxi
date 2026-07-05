@@ -1,38 +1,31 @@
-import React, { useEffect } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { CompositeScreenProps } from '@react-navigation/native';
-import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 
 import { AppMap } from '@/components/AppMap';
-import { Button } from '@/components/Button';
+import { DrawerMenu } from '@/components/DrawerMenu';
 import { useApp } from '@/store/AppContext';
 import { useCurrentLocation } from '@/features/location/useCurrentLocation';
 import { reverseGeocode } from '@/services/geocoding';
 import { colors, fontSize, radius, spacing } from '@/theme';
-import { mockPlaces } from '@/data/mockData';
-import type { MainTabParamList, RootStackParamList } from '@/navigation/types';
+import { mockPlaces, pickDriver } from '@/data/mockData';
+import type { Place } from '@/types';
+import type { RootStackParamList } from '@/navigation/types';
 
-type Props = CompositeScreenProps<
-  BottomTabScreenProps<MainTabParamList, 'Home'>,
-  NativeStackScreenProps<RootStackParamList>
->;
+type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
+
+const SUPPLY_ETA = pickDriver('any').etaMinutes;
 
 export const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const { t, pickup, setPickup, destination, setDestination } = useApp();
   const { location, granted } = useCurrentLocation();
+  const [drawer, setDrawer] = useState(false);
 
-  // Точка подачи по умолчанию — текущая геолокация (если ещё не выбрана).
   useEffect(() => {
     if (pickup) return;
-    const place = {
-      id: 'my-location',
-      title: t('home.myLocation'),
-      location,
-    };
+    const place: Place = { id: 'my-location', title: t('home.myLocation'), location };
     setPickup(place);
-    // Уточняем адрес обратным геокодированием (не критично, если не выйдет).
     if (granted) {
       reverseGeocode(location).then((name) => {
         if (name) setPickup({ ...place, title: name });
@@ -41,141 +34,192 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location, granted]);
 
+  const chooseDestination = (place: Place) => {
+    setDestination(place);
+    if (pickup) navigation.navigate('Order', { pickup, destination: place });
+  };
+
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <View style={styles.mapArea}>
+    <View style={styles.root}>
+      {/* Карта на весь экран */}
+      <View style={StyleSheet.absoluteFill}>
         <AppMap
           pickup={pickup?.location ?? location}
           destination={destination?.location}
+          pickupBadge={t('home.supply', { min: SUPPLY_ETA })}
+          style={styles.map}
         />
       </View>
 
-      <View style={styles.sheet}>
-        <Text style={styles.heading}>{t('home.where')}</Text>
-
-        {/* Поля маршрута — тап открывает поиск адреса */}
-        <View style={styles.fields}>
+      {/* Шапка: меню + адрес подачи */}
+      <SafeAreaView edges={['top']} style={styles.headerWrap} pointerEvents="box-none">
+        <View style={styles.header} pointerEvents="box-none">
+          <Pressable style={styles.menuBtn} onPress={() => setDrawer(true)}>
+            <Text style={styles.menuIcon}>☰</Text>
+          </Pressable>
           <Pressable
-            style={styles.fieldRow}
+            style={styles.address}
             onPress={() => navigation.navigate('SearchLocation', { target: 'pickup' })}
           >
-            <View style={[styles.dot, { backgroundColor: colors.success }]} />
-            <Text style={styles.fieldText} numberOfLines={1}>
-              {pickup?.title ?? t('home.from')}
+            <Text style={styles.addressLabel}>{t('home.yourAddress')} ›</Text>
+            <Text style={styles.addressValue} numberOfLines={1}>
+              {pickup?.title ?? t('home.myLocation')}
             </Text>
-            <Text style={styles.edit}>✎</Text>
           </Pressable>
-
-          <View style={styles.fieldDivider} />
-
-          <Pressable
-            style={styles.fieldRow}
-            onPress={() =>
-              navigation.navigate('SearchLocation', { target: 'destination' })
-            }
-          >
-            <View style={[styles.dot, { backgroundColor: colors.danger }]} />
-            <Text
-              style={[styles.fieldText, !destination && styles.placeholder]}
-              numberOfLines={1}
-            >
-              {destination?.title ?? t('home.to')}
-            </Text>
-            <Text style={styles.edit}>✎</Text>
-          </Pressable>
+          <View style={styles.menuBtn} />
         </View>
+      </SafeAreaView>
 
-        {/* Быстрые адреса */}
-        <View style={styles.suggestions}>
-          {mockPlaces.slice(0, 3).map((place) => {
-            const active = destination?.id === place.id;
-            return (
-              <Pressable
-                key={place.id}
-                style={[styles.chip, active && styles.chipActive]}
-                onPress={() => setDestination(place)}
-              >
-                <Text
-                  style={[styles.chipText, active && styles.chipTextActive]}
-                  numberOfLines={1}
-                >
+      {/* Нижняя «шторка» */}
+      <View style={styles.sheet}>
+        <View style={styles.grabber} />
+        <Pressable
+          style={styles.whereBtn}
+          onPress={() => navigation.navigate('SearchLocation', { target: 'destination' })}
+        >
+          <Text style={styles.whereIcon}>🏳️</Text>
+          <Text style={styles.whereText}>{t('home.where')}</Text>
+          <Text style={styles.whereArrow}>›</Text>
+        </Pressable>
+
+        <ScrollView
+          style={styles.places}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {mockPlaces.map((place) => (
+            <Pressable
+              key={place.id}
+              style={styles.placeRow}
+              onPress={() => chooseDestination(place)}
+            >
+              <View style={styles.placePin}>
+                <Text style={styles.placePinIcon}>📍</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.placeTitle} numberOfLines={1}>
                   {place.title}
                 </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-
-        <Button
-          title={t('home.order')}
-          disabled={!pickup || !destination}
-          onPress={() =>
-            pickup &&
-            destination &&
-            navigation.navigate('Order', { pickup, destination })
-          }
-        />
+                {!!place.subtitle && (
+                  <Text style={styles.placeSub} numberOfLines={1}>
+                    {place.subtitle}
+                  </Text>
+                )}
+              </View>
+              <Text style={styles.chevron}>›</Text>
+            </Pressable>
+          ))}
+        </ScrollView>
       </View>
-    </SafeAreaView>
+
+      <DrawerMenu
+        visible={drawer}
+        onClose={() => setDrawer(false)}
+        onNavigate={(screen) => navigation.navigate(screen)}
+      />
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.surface },
-  mapArea: { flex: 1, padding: spacing.md, paddingBottom: 0 },
+  root: { flex: 1, backgroundColor: colors.surfaceAlt },
+  map: { borderRadius: 0 },
+
+  headerWrap: { position: 'absolute', top: 0, left: 0, right: 0 },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+    gap: spacing.sm,
+  },
+  menuBtn: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 4,
+  },
+  menuIcon: { fontSize: 22, color: colors.text },
+  address: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    borderRadius: radius.md,
+    paddingVertical: 6,
+    paddingHorizontal: spacing.md,
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 4,
+  },
+  addressLabel: { fontSize: fontSize.xs, color: colors.textMuted },
+  addressValue: { fontSize: fontSize.md, fontWeight: '700', color: colors.text },
+
   sheet: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    maxHeight: '46%',
     backgroundColor: colors.background,
     borderTopLeftRadius: radius.lg,
     borderTopRightRadius: radius.lg,
-    padding: spacing.lg,
-    paddingBottom: spacing.xl,
-    marginTop: -spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.lg,
     shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: -3 },
-    elevation: 8,
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: -4 },
+    elevation: 12,
   },
-  heading: {
-    fontSize: fontSize.xl,
-    fontWeight: '800',
-    color: colors.text,
+  grabber: {
+    alignSelf: 'center',
+    width: 40,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: colors.border,
     marginBottom: spacing.md,
   },
-  fields: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    marginBottom: spacing.md,
-  },
-  fieldRow: {
+  whereBtn: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: colors.primaryLight,
+    borderRadius: radius.md,
     paddingVertical: spacing.md,
-  },
-  dot: { width: 11, height: 11, borderRadius: 6, marginRight: spacing.md },
-  fieldText: { flex: 1, fontSize: fontSize.md, color: colors.text },
-  placeholder: { color: colors.textMuted },
-  edit: { fontSize: fontSize.md, color: colors.textMuted },
-  fieldDivider: {
-    height: 1,
-    backgroundColor: colors.border,
-    marginLeft: 23,
-  },
-  suggestions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    marginBottom: spacing.lg,
-  },
-  chip: {
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: radius.pill,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    maxWidth: '100%',
+    marginBottom: spacing.sm,
   },
-  chipActive: { backgroundColor: colors.primary },
-  chipText: { fontSize: fontSize.sm, color: colors.text },
-  chipTextActive: { color: colors.textInverse, fontWeight: '600' },
+  whereIcon: { fontSize: 18, marginRight: spacing.sm },
+  whereText: { flex: 1, fontSize: fontSize.md, fontWeight: '800', color: colors.primaryDark },
+  whereArrow: { fontSize: fontSize.lg, color: colors.primary, fontWeight: '800' },
+  places: { flexGrow: 0 },
+  placeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  placePin: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.surfaceAlt,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  placePinIcon: { fontSize: 17 },
+  placeTitle: { fontSize: fontSize.md, fontWeight: '600', color: colors.text },
+  placeSub: { fontSize: fontSize.sm, color: colors.textMuted, marginTop: 2 },
+  chevron: { fontSize: fontSize.lg, color: colors.textMuted },
 });

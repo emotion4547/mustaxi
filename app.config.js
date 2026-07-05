@@ -1,7 +1,11 @@
 // Динамическая конфигурация Expo.
 //
-// Карта работает на OpenStreetMap (Leaflet в WebView) — API-ключи и
-// сторонние аккаунты не требуются.
+// Ключи Яндекса берутся из окружения (в CI — из GitHub-секретов) и НЕ
+// хранятся в репозитории. Если ключа Карт нет — карта откатывается на
+// бесплатные тайлы OpenStreetMap/CARTO (Leaflet). Если нет ключа Геокодера —
+// поиск адреса откатывается на Nominatim (OSM).
+const yandexMapsKey = process.env.YANDEX_MAPS_API_KEY || '';
+const yandexGeocoderKey = process.env.YANDEX_GEOCODER_API_KEY || '';
 
 module.exports = {
   expo: {
@@ -32,6 +36,10 @@ module.exports = {
     plugins: ['expo-location'],
     extra: {
       supportedLocales: ['ru', 'ar', 'en'],
+      yandex: {
+        mapsKey: yandexMapsKey,
+        geocoderKey: yandexGeocoderKey,
+      },
       eas: {
         projectId: '200a1e9d-10c2-4c54-a7f7-6bf5efc3ca4f',
       },

@@ -2,11 +2,10 @@ import React from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 
 import { colors } from '@/theme';
 import { useApp } from '@/store/AppContext';
-import type { MainTabParamList, RootStackParamList } from './types';
+import type { RootStackParamList } from './types';
 
 import { LoginScreen } from '@/screens/LoginScreen';
 import { HomeScreen } from '@/screens/HomeScreen';
@@ -19,40 +18,6 @@ import { RideDetailsScreen } from '@/screens/RideDetailsScreen';
 import { SearchLocationScreen } from '@/screens/SearchLocationScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
-const Tab = createBottomTabNavigator<MainTabParamList>();
-
-const tabIcon = (glyph: string) => ({ color }: { color: string }) =>
-  <Text style={{ fontSize: 20, color }}>{glyph}</Text>;
-
-function MainTabs() {
-  const { t } = useApp();
-  return (
-    <Tab.Navigator
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textMuted,
-        tabBarStyle: { borderTopColor: colors.border },
-      }}
-    >
-      <Tab.Screen
-        name="Home"
-        component={HomeScreen}
-        options={{ title: t('tabs.home'), tabBarIcon: tabIcon('🚕') }}
-      />
-      <Tab.Screen
-        name="Prayer"
-        component={PrayerScreen}
-        options={{ title: t('tabs.prayer'), tabBarIcon: tabIcon('🕌') }}
-      />
-      <Tab.Screen
-        name="Profile"
-        component={ProfileScreen}
-        options={{ title: t('tabs.profile'), tabBarIcon: tabIcon('👤') }}
-      />
-    </Tab.Navigator>
-  );
-}
 
 export const RootNavigator: React.FC = () => {
   const { isAuthenticated, bootstrapping } = useApp();
@@ -80,7 +45,17 @@ export const RootNavigator: React.FC = () => {
           <Stack.Screen name="Login" component={LoginScreen} />
         ) : (
           <>
-            <Stack.Screen name="Main" component={MainTabs} />
+            <Stack.Screen name="Home" component={HomeScreen} />
+            <Stack.Screen
+              name="Prayer"
+              component={PrayerScreen}
+              options={{ headerShown: true, title: '' }}
+            />
+            <Stack.Screen
+              name="Profile"
+              component={ProfileScreen}
+              options={{ headerShown: true, title: '' }}
+            />
             <Stack.Screen
               name="Order"
               component={OrderScreen}

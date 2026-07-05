@@ -31,9 +31,16 @@ export const ru = {
     from: 'Откуда',
     to: 'Куда',
     myLocation: 'Моё местоположение',
+    yourAddress: 'Ваш адрес',
+    supply: 'Подача {min} мин',
     order: 'Заказать',
     searching: 'Ищем ближайшего водителя…',
     preferences: 'Настройки поездки',
+  },
+  drawer: {
+    addresses: 'Мои адреса',
+    support: 'Служба поддержки',
+    info: 'Информация',
   },
   order: {
     title: 'Оформление поездки',

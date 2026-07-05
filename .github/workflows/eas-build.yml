@@ -49,8 +49,11 @@ jobs:
         run: npm ci
 
       # --local: сборка идёт на этом раннере; весь вывод Gradle попадает в лог.
-      # Карта на OpenStreetMap — ключи/секреты не нужны.
+      # Ключи Яндекса подставляются в app.config.js на этапе prebuild.
       - name: Build APK (local)
+        env:
+          YANDEX_MAPS_API_KEY: ${{ secrets.YANDEX_MAPS_API_KEY }}
+          YANDEX_GEOCODER_API_KEY: ${{ secrets.YANDEX_GEOCODER_API_KEY }}
         run: |
           eas build \
             --platform android \

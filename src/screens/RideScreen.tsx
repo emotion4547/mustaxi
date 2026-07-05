@@ -76,7 +76,7 @@ export const RideScreen: React.FC<Props> = ({ navigation, route }) => {
     cancelled: t('ride.cancel'),
   };
 
-  const goHome = () => navigation.navigate('Main', { screen: 'Home' });
+  const goHome = () => navigation.navigate('Home');
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -85,7 +85,7 @@ export const RideScreen: React.FC<Props> = ({ navigation, route }) => {
           pickup={pickup.location}
           destination={destination.location}
           driver={driverLoc}
-          driverLabel={ride?.driver.name}
+          showLocate={false}
         />
       </View>
 

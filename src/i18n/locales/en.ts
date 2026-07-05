@@ -33,9 +33,16 @@ export const en: Translations = {
     from: 'From',
     to: 'To',
     myLocation: 'My location',
+    yourAddress: 'Your address',
+    supply: 'Arrival {min} min',
     order: 'Request',
     searching: 'Finding the nearest driver…',
     preferences: 'Ride preferences',
+  },
+  drawer: {
+    addresses: 'My addresses',
+    support: 'Support',
+    info: 'Information',
   },
   order: {
     title: 'Ride details',

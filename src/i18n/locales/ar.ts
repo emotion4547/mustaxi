@@ -33,9 +33,16 @@ export const ar: Translations = {
     from: 'من',
     to: 'إلى',
     myLocation: 'موقعي',
+    yourAddress: 'عنوانك',
+    supply: 'الوصول خلال {min} د',
     order: 'اطلب',
     searching: 'نبحث عن أقرب سائق…',
     preferences: 'تفضيلات الرحلة',
+  },
+  drawer: {
+    addresses: 'عناويني',
+    support: 'الدعم',
+    info: 'معلومات',
   },
   order: {
     title: 'تفاصيل الرحلة',
