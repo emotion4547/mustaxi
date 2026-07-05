@@ -118,21 +118,25 @@ npm run build:android    # сборка APK в облаке
 
 По окончании CLI выдаст ссылку на скачивание APK.
 
-### ⚠️ Карты на Android в собранном APK
+### Карты на Android в собранном APK
 
-В **Expo Go** карта работает сразу. В **отдельной сборке (APK)** для Android
-`react-native-maps` требует ключ Google Maps, иначе тайлы карты будут пустыми
-(само приложение при этом работает). На **iOS** используется Apple Maps —
-ключ не нужен.
+В **отдельной сборке (APK)** для Android `react-native-maps` требует ключ
+Google Maps, иначе тайлы карты будут пустыми (само приложение работает).
+На **iOS** используется Apple Maps — ключ не нужен.
 
-Чтобы карта работала в Android APK:
-1. Получите ключ в [Google Cloud Console](https://console.cloud.google.com/)
-   (включите **Maps SDK for Android**).
-2. Добавьте в `app.json` в секцию `android`:
-   ```json
-   "config": { "googleMaps": { "apiKey": "ВАШ_КЛЮЧ" } }
-   ```
-3. Пересоберите APK.
+Ключ **не хранится в репозитории**: `app.config.js` берёт его из переменной
+окружения `GOOGLE_MAPS_API_KEY` и подставляет в манифест на этапе сборки.
+
+Чтобы карта заработала в APK:
+1. В [Google Cloud Console](https://console.cloud.google.com/) создайте проект,
+   включите **Maps SDK for Android** и создайте **API key**.
+2. В GitHub: **Settings → Secrets and variables → Actions → New repository
+   secret**, имя `GOOGLE_MAPS_API_KEY`, значение — ваш ключ.
+3. Перезапустите workflow **EAS Build (local APK)** — новый APK будет с рабочей
+   картой.
+
+Для локального запуска (`npm start`) задайте ключ в окружении, напр.
+`GOOGLE_MAPS_API_KEY=... npx expo start`.
 
 ## Дорожная карта (дальше)
 

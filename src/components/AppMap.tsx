@@ -1,8 +1,9 @@
 import React, { useEffect, useRef } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import MapView, {
   Marker,
   Polyline,
+  PROVIDER_GOOGLE,
   type Region,
 } from 'react-native-maps';
 import { colors, radius } from '@/theme';
@@ -72,6 +73,8 @@ export const AppMap: React.FC<Props> = ({
     <View style={[styles.wrap, style]}>
       <MapView
         ref={mapRef}
+        // Android всегда использует Google Maps; на iOS оставляем Apple Maps.
+        provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
         style={StyleSheet.absoluteFill}
         initialRegion={regionFor(points.length ? points : [pickup])}
         showsUserLocation

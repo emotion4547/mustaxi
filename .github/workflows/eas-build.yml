@@ -48,11 +48,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Link EAS project
-        run: eas init --non-interactive --force
-
       # --local: сборка идёт на этом раннере; весь вывод Gradle попадает в лог.
+      # GOOGLE_MAPS_API_KEY (из секрета репозитория) подставляется в
+      # app.config.js на этапе prebuild, чтобы карта работала в APK.
       - name: Build APK (local)
+        env:
+          GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
         run: |
           eas build \
             --platform android \
