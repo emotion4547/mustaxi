@@ -1,12 +1,13 @@
 import React, { useEffect, useRef } from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 import MapView, {
   Marker,
   Polyline,
   PROVIDER_GOOGLE,
   type Region,
 } from 'react-native-maps';
-import { colors, radius } from '@/theme';
+import Constants from 'expo-constants';
+import { colors, fontSize, radius, spacing } from '@/theme';
 import type { LatLng } from '@/types';
 
 interface Props {
@@ -17,6 +18,26 @@ interface Props {
   driverLabel?: string;
   style?: object;
 }
+
+/**
+ * Доступна ли нативная карта. На iOS используется Apple Maps (ключ не нужен).
+ * На Android нужен ключ Google Maps — без него react-native-maps может
+ * уронить приложение при инициализации, поэтому карту не рендерим.
+ */
+const mapsAvailable =
+  Platform.OS !== 'android' ||
+  !!Constants.expoConfig?.extra?.hasMapsKey;
+
+/** Запасной вид, когда нативная карта недоступна (нет ключа Google Maps). */
+const MapFallback: React.FC<{ style?: object }> = ({ style }) => (
+  <View style={[styles.wrap, styles.fallback, style]}>
+    <Text style={styles.fallbackIcon}>🗺️</Text>
+    <Text style={styles.fallbackTitle}>Карта недоступна</Text>
+    <Text style={styles.fallbackText}>
+      Добавьте ключ Google Maps (GOOGLE_MAPS_API_KEY), чтобы включить карту
+    </Text>
+  </View>
+);
 
 /** Регион, охватывающий все переданные точки, с отступом. */
 function regionFor(points: LatLng[]): Region {
@@ -52,6 +73,12 @@ export const AppMap: React.FC<Props> = ({
   const points = [pickup, destination, driver].filter(
     (p): p is LatLng => !!p,
   );
+
+  // Без ключа Google Maps на Android показываем заглушку, а не нативную
+  // карту — иначе приложение может аварийно завершиться.
+  if (!mapsAvailable) {
+    return <MapFallback style={style} />;
+  }
 
   useEffect(() => {
     if (points.length < 2 || !mapRef.current) return;
@@ -119,5 +146,22 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     borderWidth: 3,
     borderColor: colors.background,
+  },
+  fallback: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.lg,
+  },
+  fallbackIcon: { fontSize: 44, marginBottom: spacing.sm },
+  fallbackTitle: {
+    fontSize: fontSize.md,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  fallbackText: {
+    fontSize: fontSize.sm,
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginTop: spacing.xs,
   },
 });

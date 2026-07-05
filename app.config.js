@@ -43,6 +43,10 @@ module.exports = {
     plugins: ['expo-location'],
     extra: {
       supportedLocales: ['ru', 'ar', 'en'],
+      // Флаг для рантайма: задан ли ключ Google Maps. Если нет — на Android
+      // не рендерим нативную карту (иначе react-native-maps может уронить
+      // приложение при инициализации без ключа).
+      hasMapsKey: !!googleMapsApiKey,
       eas: {
         projectId: '200a1e9d-10c2-4c54-a7f7-6bf5efc3ca4f',
       },
