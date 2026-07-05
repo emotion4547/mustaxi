@@ -90,21 +90,22 @@ npm start        # отсканируйте QR в Expo Go (iOS/Android)
 облаке Expo — устанавливаемый **Android APK** (бесплатно) или сборку для iOS.
 Компьютер для этого не нужен. Профили сборки описаны в `eas.json`.
 
-### Путь A — из облака Expo, без своего ПК (рекомендуется)
+### Путь A — через GitHub Actions, без своего ПК (рекомендуется)
 
-Полностью автоматизировано через GitHub Actions (`.github/workflows/eas-build.yml`):
+Workflow `.github/workflows/eas-build.yml` собирает APK прямо на раннере
+GitHub (`eas build --local`) и публикует его как артефакт:
 
 1. Создайте бесплатный аккаунт на **https://expo.dev**.
 2. Получите токен доступа: expo.dev → **Account settings → Access tokens →
    Create token**. Скопируйте его.
 3. В репозитории на GitHub: **Settings → Secrets and variables → Actions →
    New repository secret**, имя `EXPO_TOKEN`, значение — ваш токен.
-4. Откройте вкладку **Actions → EAS Build → Run workflow**, выберите
-   `platform: android`, `profile: preview` → **Run**.
-5. В логах шага **Build** появится ссылка вида `https://expo.dev/...` — там
-   по завершении сборки (обычно 10–20 мин) будет **кнопка скачивания APK** и
-   QR-код. Скачайте APK на телефон и установите (разрешите «установку из
-   неизвестных источников»).
+4. Вкладка **Actions → EAS Build (local APK) → Run workflow**, выберите
+   `profile: preview` → **Run**.
+5. По завершении сборки (~10–15 мин) на странице запуска внизу, в разделе
+   **Artifacts**, появится файл **`mustaxi-preview-apk`**. Скачайте, распакуйте
+   и установите APK на Android (разрешите «установку из неизвестных
+   источников»).
 
 ### Путь B — с компьютера (если он есть)
 
