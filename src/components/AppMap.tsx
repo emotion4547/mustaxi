@@ -1,13 +1,7 @@
 import React, { useEffect, useRef } from 'react';
-import { Platform, StyleSheet, Text, View } from 'react-native';
-import MapView, {
-  Marker,
-  Polyline,
-  PROVIDER_GOOGLE,
-  type Region,
-} from 'react-native-maps';
-import Constants from 'expo-constants';
-import { colors, fontSize, radius, spacing } from '@/theme';
+import { StyleSheet, View } from 'react-native';
+import { WebView } from 'react-native-webview';
+import { colors, radius } from '@/theme';
 import type { LatLng } from '@/types';
 
 interface Props {
@@ -20,114 +14,118 @@ interface Props {
 }
 
 /**
- * Доступна ли нативная карта. На iOS используется Apple Maps (ключ не нужен).
- * На Android нужен ключ Google Maps — без него react-native-maps может
- * уронить приложение при инициализации, поэтому карту не рендерим.
+ * Карта на OpenStreetMap (Leaflet в WebView).
+ *
+ * Полностью бесплатно, без API-ключей и регистрации — подходит там, где
+ * Google Maps недоступен (санкции/отсутствие Google Cloud). Leaflet и тайлы
+ * OSM загружаются во WebView во время выполнения. Маркеры (подача,
+ * назначение, водитель) обновляются через injectJavaScript, поэтому
+ * движущийся водитель отрисовывается плавно, без перезагрузки карты.
  */
-const mapsAvailable =
-  Platform.OS !== 'android' ||
-  !!Constants.expoConfig?.extra?.hasMapsKey;
+const HTML = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    html, body, #map { height: 100%; margin: 0; padding: 0; background: #eef2f0; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    var map = L.map('map', { zoomControl: false, attributionControl: false })
+      .setView([55.751, 37.618], 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+    }).addTo(map);
 
-/** Запасной вид, когда нативная карта недоступна (нет ключа Google Maps). */
-const MapFallback: React.FC<{ style?: object }> = ({ style }) => (
-  <View style={[styles.wrap, styles.fallback, style]}>
-    <Text style={styles.fallbackIcon}>🗺️</Text>
-    <Text style={styles.fallbackTitle}>Карта недоступна</Text>
-    <Text style={styles.fallbackText}>
-      Добавьте ключ Google Maps (GOOGLE_MAPS_API_KEY), чтобы включить карту
-    </Text>
-  </View>
-);
+    var markers = [];
+    function dot(lat, lng, color, size) {
+      return L.marker([lat, lng], {
+        icon: L.divIcon({
+          className: '',
+          html: '<div style="width:' + size + 'px;height:' + size +
+            'px;border-radius:50%;background:' + color +
+            ';border:3px solid #fff;box-shadow:0 0 5px rgba(0,0,0,.4)"></div>',
+          iconSize: [size, size],
+          iconAnchor: [size / 2, size / 2],
+        }),
+      });
+    }
+    function car(lat, lng) {
+      return L.marker([lat, lng], {
+        icon: L.divIcon({
+          className: '',
+          html: '<div style="width:22px;height:22px;border-radius:6px;background:#0A6B4E;border:3px solid #fff;box-shadow:0 0 5px rgba(0,0,0,.4)"></div>',
+          iconSize: [22, 22],
+          iconAnchor: [11, 11],
+        }),
+      });
+    }
 
-/** Регион, охватывающий все переданные точки, с отступом. */
-function regionFor(points: LatLng[]): Region {
-  const lats = points.map((p) => p.latitude);
-  const lngs = points.map((p) => p.longitude);
-  const minLat = Math.min(...lats);
-  const maxLat = Math.max(...lats);
-  const minLng = Math.min(...lngs);
-  const maxLng = Math.max(...lngs);
-  const latDelta = Math.max((maxLat - minLat) * 1.6, 0.02);
-  const lngDelta = Math.max((maxLng - minLng) * 1.6, 0.02);
-  return {
-    latitude: (minLat + maxLat) / 2,
-    longitude: (minLng + maxLng) / 2,
-    latitudeDelta: latDelta,
-    longitudeDelta: lngDelta,
-  };
-}
+    window.updateMap = function (d) {
+      markers.forEach(function (m) { map.removeLayer(m); });
+      markers = [];
+      var pts = [];
+      if (d.pickup) {
+        var a = dot(d.pickup.latitude, d.pickup.longitude, '#2E9E5B', 16).addTo(map);
+        markers.push(a); pts.push([d.pickup.latitude, d.pickup.longitude]);
+      }
+      if (d.destination) {
+        var b = dot(d.destination.latitude, d.destination.longitude, '#D24B4B', 16).addTo(map);
+        markers.push(b); pts.push([d.destination.latitude, d.destination.longitude]);
+      }
+      if (d.driver) {
+        var c = car(d.driver.latitude, d.driver.longitude).addTo(map);
+        markers.push(c); pts.push([d.driver.latitude, d.driver.longitude]);
+      }
+      if (pts.length === 1) map.setView(pts[0], 14);
+      else if (pts.length > 1) map.fitBounds(pts, { padding: [50, 60] });
+    };
+  </script>
+</body>
+</html>`;
 
-/**
- * Карта с маркерами подачи, назначения и водителя.
- * Автоматически подстраивает область, чтобы все точки были видны.
- */
 export const AppMap: React.FC<Props> = ({
   pickup,
   destination,
   driver,
-  driverLabel,
   style,
 }) => {
-  const mapRef = useRef<MapView>(null);
+  const ref = useRef<WebView>(null);
 
-  const points = [pickup, destination, driver].filter(
-    (p): p is LatLng => !!p,
-  );
+  const payload = JSON.stringify({
+    pickup,
+    destination: destination ?? null,
+    driver: driver ?? null,
+  });
 
-  // Без ключа Google Maps на Android показываем заглушку, а не нативную
-  // карту — иначе приложение может аварийно завершиться.
-  if (!mapsAvailable) {
-    return <MapFallback style={style} />;
-  }
+  const push = () => {
+    ref.current?.injectJavaScript(
+      `window.updateMap && window.updateMap(${payload}); true;`,
+    );
+  };
 
   useEffect(() => {
-    if (points.length < 2 || !mapRef.current) return;
-    mapRef.current.fitToCoordinates(points, {
-      edgePadding: { top: 80, right: 60, bottom: 80, left: 60 },
-      animated: true,
-    });
+    push();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    pickup.latitude,
-    pickup.longitude,
-    destination?.latitude,
-    destination?.longitude,
-    driver?.latitude,
-    driver?.longitude,
-  ]);
+  }, [payload]);
 
   return (
     <View style={[styles.wrap, style]}>
-      <MapView
-        ref={mapRef}
-        // Android всегда использует Google Maps; на iOS оставляем Apple Maps.
-        provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
-        style={StyleSheet.absoluteFill}
-        initialRegion={regionFor(points.length ? points : [pickup])}
-        showsUserLocation
-        showsMyLocationButton={false}
-      >
-        <Marker coordinate={pickup} title="Откуда" pinColor={colors.success} />
-        {destination && (
-          <Marker
-            coordinate={destination}
-            title="Куда"
-            pinColor={colors.danger}
-          />
-        )}
-        {driver && (
-          <Marker coordinate={driver} title={driverLabel ?? 'Водитель'}>
-            <View style={styles.carMarker} />
-          </Marker>
-        )}
-        {destination && (
-          <Polyline
-            coordinates={[driver ?? pickup, destination]}
-            strokeColor={colors.primary}
-            strokeWidth={4}
-          />
-        )}
-      </MapView>
+      <WebView
+        ref={ref}
+        originWhitelist={['*']}
+        source={{ html: HTML }}
+        onLoadEnd={push}
+        style={styles.web}
+        scrollEnabled={false}
+        overScrollMode="never"
+        androidLayerType="hardware"
+      />
     </View>
   );
 };
@@ -139,29 +137,5 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: colors.surfaceAlt,
   },
-  carMarker: {
-    width: 22,
-    height: 22,
-    borderRadius: 6,
-    backgroundColor: colors.primary,
-    borderWidth: 3,
-    borderColor: colors.background,
-  },
-  fallback: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.lg,
-  },
-  fallbackIcon: { fontSize: 44, marginBottom: spacing.sm },
-  fallbackTitle: {
-    fontSize: fontSize.md,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  fallbackText: {
-    fontSize: fontSize.sm,
-    color: colors.textMuted,
-    textAlign: 'center',
-    marginTop: spacing.xs,
-  },
+  web: { flex: 1, backgroundColor: colors.surfaceAlt },
 });

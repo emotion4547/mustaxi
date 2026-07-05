@@ -49,11 +49,8 @@ jobs:
         run: npm ci
 
       # --local: сборка идёт на этом раннере; весь вывод Gradle попадает в лог.
-      # GOOGLE_MAPS_API_KEY (из секрета репозитория) подставляется в
-      # app.config.js на этапе prebuild, чтобы карта работала в APK.
+      # Карта на OpenStreetMap — ключи/секреты не нужны.
       - name: Build APK (local)
-        env:
-          GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
         run: |
           eas build \
             --platform android \
