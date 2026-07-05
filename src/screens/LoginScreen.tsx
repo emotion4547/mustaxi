@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import {
+  Image,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -59,7 +60,11 @@ export const LoginScreen: React.FC = () => {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <View style={styles.header}>
-          <Text style={styles.logo}>🕌</Text>
+          <Image
+            source={require('../../assets/splash-icon.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
           <Text style={styles.brand}>{t('common.appName')}</Text>
         </View>
 
@@ -146,7 +151,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   flex: { flex: 1, paddingHorizontal: spacing.lg },
   header: { alignItems: 'center', marginTop: spacing.xxl },
-  logo: { fontSize: 56 },
+  logo: { width: 100, height: 100 },
   brand: {
     fontSize: fontSize.xl,
     fontWeight: '800',

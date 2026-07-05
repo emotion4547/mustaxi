@@ -16,14 +16,17 @@ module.exports = {
     userInterfaceStyle: 'light',
     scheme: 'mustaxi',
     owner: 'em0t1on',
+    icon: './assets/icon.png',
     splash: {
+      image: './assets/splash-icon.png',
       resizeMode: 'contain',
-      backgroundColor: '#0A6B4E',
+      backgroundColor: '#FFFFFF',
     },
     assetBundlePatterns: ['**/*'],
     ios: {
       supportsTablet: true,
       bundleIdentifier: 'com.mustaxi.app',
+      icon: './assets/icon.png',
       infoPlist: {
         NSLocationWhenInUseUsageDescription:
           'MusTaxi использует геолокацию для подачи такси, расчёта времени намаза и определения направления Киблы.',
@@ -32,6 +35,13 @@ module.exports = {
     android: {
       package: 'com.mustaxi.app',
       permissions: ['ACCESS_FINE_LOCATION', 'ACCESS_COARSE_LOCATION'],
+      adaptiveIcon: {
+        foregroundImage: './assets/adaptive-icon.png',
+        backgroundColor: '#FFFFFF',
+      },
+    },
+    web: {
+      favicon: './assets/favicon.png',
     },
     plugins: ['expo-location'],
     extra: {

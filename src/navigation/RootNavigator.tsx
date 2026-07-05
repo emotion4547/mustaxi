@@ -1,10 +1,9 @@
 import React from 'react';
-import { ActivityIndicator, Text, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
-import { colors } from '@/theme';
 import { useApp } from '@/store/AppContext';
+import { Preloader } from '@/components/Preloader';
 import type { RootStackParamList } from './types';
 
 import { LoginScreen } from '@/screens/LoginScreen';
@@ -23,19 +22,7 @@ export const RootNavigator: React.FC = () => {
   const { isAuthenticated, bootstrapping } = useApp();
 
   if (bootstrapping) {
-    return (
-      <View
-        style={{
-          flex: 1,
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: colors.background,
-        }}
-      >
-        <Text style={{ fontSize: 56 }}>🕌</Text>
-        <ActivityIndicator color={colors.primary} style={{ marginTop: 16 }} />
-      </View>
-    );
+    return <Preloader />;
   }
 
   return (
