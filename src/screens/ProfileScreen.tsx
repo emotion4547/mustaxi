@@ -1,6 +1,9 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { CompositeScreenProps } from '@react-navigation/native';
+import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 
 import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
@@ -8,8 +11,14 @@ import { SegmentedControl } from '@/components/SegmentedControl';
 import { useApp } from '@/store/AppContext';
 import { colors, fontSize, spacing } from '@/theme';
 import type { Locale } from '@/i18n';
+import type { MainTabParamList, RootStackParamList } from '@/navigation/types';
 
-export const ProfileScreen: React.FC = () => {
+type Props = CompositeScreenProps<
+  BottomTabScreenProps<MainTabParamList, 'Profile'>,
+  NativeStackScreenProps<RootStackParamList>
+>;
+
+export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
   const { t, profile, locale, setLocale, logout } = useApp();
 
   const localeSegments: { value: Locale; label: string }[] = [
@@ -18,11 +27,17 @@ export const ProfileScreen: React.FC = () => {
     { value: 'en', label: 'Eng' },
   ];
 
-  const rows = [
-    { key: 'trips', label: t('profile.trips'), glyph: '🧾' },
-    { key: 'payment', label: t('profile.payment'), glyph: '💳' },
-    { key: 'settings', label: t('profile.settings'), glyph: '⚙️' },
-  ];
+  const rows: { key: string; label: string; glyph: string; onPress?: () => void }[] =
+    [
+      {
+        key: 'trips',
+        label: t('profile.trips'),
+        glyph: '🧾',
+        onPress: () => navigation.navigate('History'),
+      },
+      { key: 'payment', label: t('profile.payment'), glyph: '💳' },
+      { key: 'settings', label: t('profile.settings'), glyph: '⚙️' },
+    ];
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -32,7 +47,7 @@ export const ProfileScreen: React.FC = () => {
         <Card style={styles.userCard}>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>
-              {profile.name.charAt(0).toUpperCase()}
+              {(profile.name || '?').charAt(0).toUpperCase()}
             </Text>
           </View>
           <View style={{ flex: 1 }}>
@@ -45,6 +60,7 @@ export const ProfileScreen: React.FC = () => {
           {rows.map((row, i) => (
             <Pressable
               key={row.key}
+              onPress={row.onPress}
               style={[styles.menuRow, i < rows.length - 1 && styles.menuDivider]}
             >
               <Text style={styles.menuGlyph}>{row.glyph}</Text>

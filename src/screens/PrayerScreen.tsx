@@ -5,6 +5,7 @@ import * as Location from 'expo-location';
 
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
+import { QiblaCompass } from '@/components/QiblaCompass';
 import { useApp } from '@/store/AppContext';
 import { colors, fontSize, radius, spacing } from '@/theme';
 import {
@@ -88,19 +89,18 @@ export const PrayerScreen: React.FC = () => {
               </Text>
             </Card>
 
-            {/* Кибла */}
+            {/* Кибла — живой компас на магнитометре */}
             <Card style={styles.section}>
-              <View style={styles.qiblaRow}>
-                <Text style={styles.qiblaCompass}>🧭</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.qiblaTitle}>{t('prayer.qibla')}</Text>
-                  <Text style={styles.muted}>
-                    {t('prayer.qiblaHint', {
-                      deg: Math.round(schedule.qiblaDegrees),
-                    })}
-                  </Text>
-                </View>
-              </View>
+              <Text style={styles.qiblaTitle}>{t('prayer.qibla')}</Text>
+              <Text style={[styles.muted, { marginBottom: spacing.lg }]}>
+                {t('prayer.qiblaHint', {
+                  deg: Math.round(schedule.qiblaDegrees),
+                })}
+              </Text>
+              <QiblaCompass qiblaDegrees={schedule.qiblaDegrees} />
+              <Text style={[styles.muted, styles.compassHint]}>
+                {t('prayer.compassHint')}
+              </Text>
             </Card>
 
             {/* Расписание */}
@@ -164,9 +164,11 @@ const styles = StyleSheet.create({
     color: colors.textInverse,
     marginTop: 2,
   },
-  qiblaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  qiblaCompass: { fontSize: 36 },
   qiblaTitle: { fontSize: fontSize.md, fontWeight: '700', color: colors.text },
+  compassHint: {
+    marginTop: spacing.xl,
+    textAlign: 'center',
+  },
   prayerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Text } from 'react-native';
+import { ActivityIndicator, Text, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -14,6 +14,8 @@ import { PrayerScreen } from '@/screens/PrayerScreen';
 import { ProfileScreen } from '@/screens/ProfileScreen';
 import { OrderScreen } from '@/screens/OrderScreen';
 import { RideScreen } from '@/screens/RideScreen';
+import { HistoryScreen } from '@/screens/HistoryScreen';
+import { RideDetailsScreen } from '@/screens/RideDetailsScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -52,7 +54,24 @@ function MainTabs() {
 }
 
 export const RootNavigator: React.FC = () => {
-  const { isAuthenticated } = useApp();
+  const { isAuthenticated, bootstrapping } = useApp();
+
+  if (bootstrapping) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: colors.background,
+        }}
+      >
+        <Text style={{ fontSize: 56 }}>🕌</Text>
+        <ActivityIndicator color={colors.primary} style={{ marginTop: 16 }} />
+      </View>
+    );
+  }
+
   return (
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
@@ -67,6 +86,16 @@ export const RootNavigator: React.FC = () => {
               options={{ presentation: 'modal' }}
             />
             <Stack.Screen name="Ride" component={RideScreen} />
+            <Stack.Screen
+              name="History"
+              component={HistoryScreen}
+              options={{ headerShown: true, title: '' }}
+            />
+            <Stack.Screen
+              name="RideDetails"
+              component={RideDetailsScreen}
+              options={{ headerShown: true, title: '' }}
+            />
           </>
         )}
       </Stack.Navigator>

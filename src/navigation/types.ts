@@ -1,5 +1,5 @@
 import type { NavigatorScreenParams } from '@react-navigation/native';
-import type { Place, RidePreferences } from '@/types';
+import type { Place, RidePreferences, RideRecord } from '@/types';
 
 export type MainTabParamList = {
   Home: undefined;
@@ -18,5 +18,9 @@ export type RootStackParamList = {
     pickup: Place;
     destination: Place;
     preferences: RidePreferences;
+  };
+  History: undefined;
+  RideDetails: {
+    record: RideRecord;
   };
 };

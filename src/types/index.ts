@@ -75,3 +75,38 @@ export interface UserProfile {
   gender: Gender;
   preferredLocale: 'ru' | 'ar' | 'en';
 }
+
+/** Сессия после успешной верификации по SMS. */
+export interface AuthSession {
+  token: string;
+  profile: UserProfile;
+}
+
+/** Вызов OTP: заявка на код подтверждения. */
+export interface OtpChallenge {
+  phone: string;
+  expiresAt: number;
+  /** Только для прототипа — реальный бэкенд код не возвращает. */
+  demoCode: string;
+}
+
+/** Живое обновление активной поездки от «сервера». */
+export interface RideUpdate {
+  status: RideStatus;
+  driverLocation: LatLng;
+  etaMinutes: number;
+}
+
+/** Запись в истории поездок. */
+export interface RideRecord {
+  id: string;
+  pickupTitle: string;
+  destinationTitle: string;
+  driverName: string;
+  driverGender: Gender;
+  fareTotal: number;
+  currency: string;
+  status: 'completed' | 'cancelled';
+  preferences: RidePreferences;
+  createdAt: number;
+}

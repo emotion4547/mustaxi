@@ -1,46 +1,70 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
-import { MapPlaceholder } from '@/components/MapPlaceholder';
+import { AppMap } from '@/components/AppMap';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { useApp } from '@/store/AppContext';
 import { colors, fontSize, radius, spacing } from '@/theme';
-import { pickDriver } from '@/data/mockData';
-import type { RideStatus } from '@/types';
+import { createRide, subscribeRide, type CreatedRide } from '@/services/api';
+import { storage } from '@/services/storage';
+import type { LatLng, RideStatus } from '@/types';
 import type { RootStackParamList } from '@/navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Ride'>;
 
-const statusFlow: RideStatus[] = [
-  'searching',
-  'driver_assigned',
-  'arriving',
-  'in_progress',
-  'completed',
-];
-
 export const RideScreen: React.FC<Props> = ({ navigation, route }) => {
-  const { preferences } = route.params;
+  const { pickup, destination, preferences } = route.params;
   const { t } = useApp();
-  const driver = useMemo(
-    () => pickDriver(preferences.driverGender),
-    [preferences.driverGender],
-  );
-  const [statusIndex, setStatusIndex] = useState(0);
-  const status = statusFlow[statusIndex];
 
-  // Симуляция жизненного цикла поездки для MVP.
+  const [ride, setRide] = useState<CreatedRide | null>(null);
+  const [status, setStatus] = useState<RideStatus>('searching');
+  const [eta, setEta] = useState(0);
+  const [driverLoc, setDriverLoc] = useState<LatLng | null>(null);
+  const savedRef = useRef(false);
+
+  // 1) Создаём заказ и подписываемся на обновления.
   useEffect(() => {
-    if (statusIndex >= statusFlow.length - 1) return;
-    const timer = setTimeout(
-      () => setStatusIndex((i) => Math.min(i + 1, statusFlow.length - 1)),
-      2500,
-    );
-    return () => clearTimeout(timer);
-  }, [statusIndex]);
+    let unsub: (() => void) | undefined;
+    let active = true;
+
+    createRide({ pickup, destination, preferences }).then((created) => {
+      if (!active) return;
+      setRide(created);
+      setDriverLoc(created.driver.location);
+      unsub = subscribeRide(created, (update) => {
+        setStatus(update.status);
+        setEta(update.etaMinutes);
+        setDriverLoc(update.driverLocation);
+      });
+    });
+
+    return () => {
+      active = false;
+      unsub?.();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 2) По завершении сохраняем поездку в историю (один раз).
+  useEffect(() => {
+    if (status !== 'completed' || !ride || savedRef.current) return;
+    savedRef.current = true;
+    storage.addHistory({
+      id: ride.id,
+      pickupTitle: pickup.title,
+      destinationTitle: destination.title,
+      driverName: ride.driver.name,
+      driverGender: ride.driver.gender,
+      fareTotal: ride.fare.total,
+      currency: ride.fare.currency,
+      status: 'completed',
+      preferences,
+      createdAt: Date.now(),
+    });
+  }, [status, ride, pickup, destination, preferences]);
 
   const statusText: Record<RideStatus, string> = {
     idle: '',
@@ -52,64 +76,74 @@ export const RideScreen: React.FC<Props> = ({ navigation, route }) => {
     cancelled: t('ride.cancel'),
   };
 
-  const showDriver = statusIndex >= 1;
+  const goHome = () => navigation.navigate('Main', { screen: 'Home' });
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.mapArea}>
-        <MapPlaceholder label={statusText[status]} />
+        <AppMap
+          pickup={pickup.location}
+          destination={destination.location}
+          driver={driverLoc}
+          driverLabel={ride?.driver.name}
+        />
       </View>
 
       <View style={styles.sheet}>
         <View style={styles.statusRow}>
           <Text style={styles.status}>{statusText[status]}</Text>
-          {showDriver && status !== 'completed' && (
-            <Text style={styles.eta}>
-              {t('ride.eta', { min: driver.etaMinutes })}
-            </Text>
+          {ride && status !== 'completed' && status !== 'searching' && (
+            <Text style={styles.eta}>{t('ride.eta', { min: eta })}</Text>
           )}
         </View>
 
-        {showDriver && (
+        {!ride ? (
+          <View style={styles.searching}>
+            <ActivityIndicator color={colors.primary} />
+            <Text style={styles.searchingText}>{t('home.searching')}</Text>
+          </View>
+        ) : (
           <Card style={styles.driverCard}>
             <View
               style={[
                 styles.avatar,
                 {
                   backgroundColor:
-                    driver.gender === 'female' ? colors.female : colors.male,
+                    ride.driver.gender === 'female'
+                      ? colors.female
+                      : colors.male,
                 },
               ]}
             >
               <Text style={styles.avatarText}>
-                {driver.gender === 'female' ? '♀' : '♂'}
+                {ride.driver.gender === 'female' ? '♀' : '♂'}
               </Text>
             </View>
             <View style={styles.driverInfo}>
-              <Text style={styles.driverName}>{driver.name}</Text>
+              <Text style={styles.driverName}>{ride.driver.name}</Text>
               <Text style={styles.driverMeta}>
-                {driver.carModel} · {driver.carPlate}
+                {ride.driver.carModel} · {ride.driver.carPlate}
               </Text>
               <Text style={styles.driverBadge}>
-                {driver.gender === 'female'
+                {ride.driver.gender === 'female'
                   ? t('ride.female')
                   : t('ride.male')}{' '}
-                · ⭐ {driver.rating.toFixed(1)}
+                · ⭐ {ride.driver.rating.toFixed(1)}
               </Text>
             </View>
+            <Text style={styles.fare}>
+              {ride.fare.total} {ride.fare.currency}
+            </Text>
           </Card>
         )}
 
         {status === 'completed' ? (
-          <Button
-            title={t('common.close')}
-            onPress={() => navigation.navigate('Main', { screen: 'Home' })}
-          />
+          <Button title={t('common.close')} onPress={goHome} />
         ) : (
           <Button
             title={t('ride.cancel')}
             variant="secondary"
-            onPress={() => navigation.navigate('Main', { screen: 'Home' })}
+            onPress={goHome}
           />
         )}
       </View>
@@ -135,6 +169,14 @@ const styles = StyleSheet.create({
   },
   status: { fontSize: fontSize.lg, fontWeight: '800', color: colors.text },
   eta: { fontSize: fontSize.md, fontWeight: '700', color: colors.primary },
+  searching: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: spacing.md,
+    marginBottom: spacing.md,
+  },
+  searchingText: { fontSize: fontSize.md, color: colors.textMuted },
   driverCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -153,4 +195,5 @@ const styles = StyleSheet.create({
   driverName: { fontSize: fontSize.md, fontWeight: '700', color: colors.text },
   driverMeta: { fontSize: fontSize.sm, color: colors.textMuted, marginTop: 2 },
   driverBadge: { fontSize: fontSize.sm, color: colors.primary, marginTop: 4 },
+  fare: { fontSize: fontSize.md, fontWeight: '800', color: colors.text },
 });

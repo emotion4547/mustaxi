@@ -12,11 +12,45 @@ import { Button } from '@/components/Button';
 import { useApp } from '@/store/AppContext';
 import { colors, fontSize, radius, spacing } from '@/theme';
 
-export const LoginScreen: React.FC = () => {
-  const { t, login } = useApp();
-  const [phone, setPhone] = useState('');
+type Step = 'phone' | 'code';
 
-  const canContinue = phone.replace(/\D/g, '').length >= 10;
+export const LoginScreen: React.FC = () => {
+  const { t, sendOtp, confirmOtp } = useApp();
+  const [step, setStep] = useState<Step>('phone');
+  const [phone, setPhone] = useState('');
+  const [code, setCode] = useState('');
+  const [demoCode, setDemoCode] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const phoneValid = phone.replace(/\D/g, '').length >= 10;
+  const codeValid = code.replace(/\D/g, '').length >= 4;
+
+  const handleSendCode = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const dc = await sendOtp(phone);
+      setDemoCode(dc);
+      setStep('code');
+    } catch {
+      setError(t('login.sendError'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleConfirm = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      await confirmOtp(phone, code);
+    } catch {
+      setError(t('login.wrongCode'));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -30,27 +64,77 @@ export const LoginScreen: React.FC = () => {
         </View>
 
         <View style={styles.body}>
-          <Text style={styles.title}>{t('login.title')}</Text>
-          <Text style={styles.subtitle}>{t('login.subtitle')}</Text>
+          {step === 'phone' ? (
+            <>
+              <Text style={styles.title}>{t('login.title')}</Text>
+              <Text style={styles.subtitle}>{t('login.subtitle')}</Text>
+              <Text style={styles.label}>{t('login.phone')}</Text>
+              <TextInput
+                style={styles.input}
+                value={phone}
+                onChangeText={setPhone}
+                keyboardType="phone-pad"
+                placeholder="+7 900 000-00-00"
+                placeholderTextColor={colors.textMuted}
+                autoFocus
+              />
+            </>
+          ) : (
+            <>
+              <Text style={styles.title}>{t('login.enterCode')}</Text>
+              <Text style={styles.subtitle}>
+                {t('login.codeSent', { phone })}
+              </Text>
+              <Text style={styles.label}>{t('login.code')}</Text>
+              <TextInput
+                style={[styles.input, styles.codeInput]}
+                value={code}
+                onChangeText={setCode}
+                keyboardType="number-pad"
+                placeholder="0000"
+                placeholderTextColor={colors.textMuted}
+                maxLength={4}
+                autoFocus
+              />
+              {!!demoCode && (
+                <Text style={styles.demo}>
+                  {t('login.demoHint', { code: demoCode })}
+                </Text>
+              )}
+            </>
+          )}
 
-          <Text style={styles.label}>{t('login.phone')}</Text>
-          <TextInput
-            style={styles.input}
-            value={phone}
-            onChangeText={setPhone}
-            keyboardType="phone-pad"
-            placeholder="+7 900 000-00-00"
-            placeholderTextColor={colors.textMuted}
-            autoFocus
-          />
+          {!!error && <Text style={styles.error}>{error}</Text>}
         </View>
 
         <View style={styles.footer}>
-          <Button
-            title={t('login.continue')}
-            onPress={() => login(phone)}
-            disabled={!canContinue}
-          />
+          {step === 'phone' ? (
+            <Button
+              title={t('login.continue')}
+              onPress={handleSendCode}
+              disabled={!phoneValid}
+              loading={loading}
+            />
+          ) : (
+            <>
+              <Button
+                title={t('login.verify')}
+                onPress={handleConfirm}
+                disabled={!codeValid}
+                loading={loading}
+              />
+              <Button
+                title={t('common.back')}
+                variant="ghost"
+                onPress={() => {
+                  setStep('phone');
+                  setCode('');
+                  setError('');
+                }}
+                style={{ marginTop: spacing.xs }}
+              />
+            </>
+          )}
           <Text style={styles.terms}>{t('login.terms')}</Text>
         </View>
       </KeyboardAvoidingView>
@@ -90,6 +174,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     fontSize: fontSize.lg,
     color: colors.text,
+  },
+  codeInput: {
+    letterSpacing: 12,
+    textAlign: 'center',
+    fontSize: fontSize.xxl,
+  },
+  demo: {
+    fontSize: fontSize.sm,
+    color: colors.primary,
+    marginTop: spacing.md,
+    textAlign: 'center',
+  },
+  error: {
+    fontSize: fontSize.sm,
+    color: colors.danger,
+    marginTop: spacing.md,
+    textAlign: 'center',
   },
   footer: { paddingBottom: spacing.lg },
   terms: {
