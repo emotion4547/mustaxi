@@ -1,0 +1,58 @@
+name: EAS Build
+
+# Запуск вручную из вкладки Actions на GitHub («Run workflow»).
+# Собирает приложение в облаке Expo (EAS). Ссылка на готовый APK/сборку
+# появится в логах шага и на https://expo.dev в вашем проекте.
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Платформа сборки'
+        type: choice
+        default: android
+        options:
+          - android
+          - ios
+          - all
+      profile:
+        description: 'Профиль из eas.json'
+        type: choice
+        default: preview
+        options:
+          - preview
+          - development
+          - production
+
+jobs:
+  build:
+    name: Build with EAS
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Link EAS project
+        run: eas init --non-interactive --force
+
+      - name: Build
+        run: |
+          eas build \
+            --platform ${{ github.event.inputs.platform }} \
+            --profile ${{ github.event.inputs.profile }} \
+            --non-interactive \
+            --no-wait

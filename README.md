@@ -84,6 +84,55 @@ npm start        # отсканируйте QR в Expo Go (iOS/Android)
 > Для перехода на реальный сервер меняется только реализация этого файла —
 > экраны и типы остаются прежними.
 
+## Сборка устанавливаемого APK через EAS Build
+
+[EAS Build](https://docs.expo.dev/build/introduction/) собирает приложение в
+облаке Expo — устанавливаемый **Android APK** (бесплатно) или сборку для iOS.
+Компьютер для этого не нужен. Профили сборки описаны в `eas.json`.
+
+### Путь A — из облака Expo, без своего ПК (рекомендуется)
+
+Полностью автоматизировано через GitHub Actions (`.github/workflows/eas-build.yml`):
+
+1. Создайте бесплатный аккаунт на **https://expo.dev**.
+2. Получите токен доступа: expo.dev → **Account settings → Access tokens →
+   Create token**. Скопируйте его.
+3. В репозитории на GitHub: **Settings → Secrets and variables → Actions →
+   New repository secret**, имя `EXPO_TOKEN`, значение — ваш токен.
+4. Откройте вкладку **Actions → EAS Build → Run workflow**, выберите
+   `platform: android`, `profile: preview` → **Run**.
+5. В логах шага **Build** появится ссылка вида `https://expo.dev/...` — там
+   по завершении сборки (обычно 10–20 мин) будет **кнопка скачивания APK** и
+   QR-код. Скачайте APK на телефон и установите (разрешите «установку из
+   неизвестных источников»).
+
+### Путь B — с компьютера (если он есть)
+
+```bash
+npm install
+npm run eas:login        # вход в аккаунт Expo
+npm run eas:init         # один раз — привязать проект
+npm run build:android    # сборка APK в облаке
+```
+
+По окончании CLI выдаст ссылку на скачивание APK.
+
+### ⚠️ Карты на Android в собранном APK
+
+В **Expo Go** карта работает сразу. В **отдельной сборке (APK)** для Android
+`react-native-maps` требует ключ Google Maps, иначе тайлы карты будут пустыми
+(само приложение при этом работает). На **iOS** используется Apple Maps —
+ключ не нужен.
+
+Чтобы карта работала в Android APK:
+1. Получите ключ в [Google Cloud Console](https://console.cloud.google.com/)
+   (включите **Maps SDK for Android**).
+2. Добавьте в `app.json` в секцию `android`:
+   ```json
+   "config": { "googleMaps": { "apiKey": "ВАШ_КЛЮЧ" } }
+   ```
+3. Пересоберите APK.
+
 ## Дорожная карта (дальше)
 
 - [ ] Реальный бэкенд (REST/WebSocket) вместо mock-API
