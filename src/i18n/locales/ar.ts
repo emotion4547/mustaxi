@@ -83,6 +83,11 @@ export const ar: Translations = {
     locationNeeded: 'اسمح بالوصول إلى الموقع لحساب مواقيت الصلاة',
     allowLocation: 'السماح بالموقع',
   },
+  search: {
+    placeholder: 'أدخل العنوان',
+    quick: 'عناوين سريعة',
+    empty: 'لا توجد نتائج',
+  },
   history: {
     title: 'سجل الرحلات',
     empty: 'ستظهر رحلاتك هنا',

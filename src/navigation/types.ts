@@ -23,4 +23,8 @@ export type RootStackParamList = {
   RideDetails: {
     record: RideRecord;
   };
+  SearchLocation: {
+    /** Какую точку выбираем. */
+    target: 'pickup' | 'destination';
+  };
 };

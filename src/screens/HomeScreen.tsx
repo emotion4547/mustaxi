@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -7,12 +7,11 @@ import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 
 import { AppMap } from '@/components/AppMap';
 import { Button } from '@/components/Button';
-import { Card } from '@/components/Card';
 import { useApp } from '@/store/AppContext';
 import { useCurrentLocation } from '@/features/location/useCurrentLocation';
+import { reverseGeocode } from '@/services/geocoding';
 import { colors, fontSize, radius, spacing } from '@/theme';
 import { mockPlaces } from '@/data/mockData';
-import type { Place } from '@/types';
 import type { MainTabParamList, RootStackParamList } from '@/navigation/types';
 
 type Props = CompositeScreenProps<
@@ -21,52 +20,74 @@ type Props = CompositeScreenProps<
 >;
 
 export const HomeScreen: React.FC<Props> = ({ navigation }) => {
-  const { t } = useApp();
+  const { t, pickup, setPickup, destination, setDestination } = useApp();
   const { location, granted } = useCurrentLocation();
-  const [destination, setDestination] = useState<Place | null>(null);
 
-  const pickup: Place = useMemo(
-    () => ({
-      id: 'pickup',
-      title: granted ? t('home.myLocation') : mockPlaces[0].title,
+  // Точка подачи по умолчанию — текущая геолокация (если ещё не выбрана).
+  useEffect(() => {
+    if (pickup) return;
+    const place = {
+      id: 'my-location',
+      title: t('home.myLocation'),
       location,
-    }),
-    [location, granted, t],
-  );
+    };
+    setPickup(place);
+    // Уточняем адрес обратным геокодированием (не критично, если не выйдет).
+    if (granted) {
+      reverseGeocode(location).then((name) => {
+        if (name) setPickup({ ...place, title: name });
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location, granted]);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.mapArea}>
-        <AppMap pickup={location} destination={destination?.location} />
+        <AppMap
+          pickup={pickup?.location ?? location}
+          destination={destination?.location}
+        />
       </View>
 
       <View style={styles.sheet}>
         <Text style={styles.heading}>{t('home.where')}</Text>
 
-        <Card style={styles.pointCard}>
-          <View style={styles.pointRow}>
+        {/* Поля маршрута — тап открывает поиск адреса */}
+        <View style={styles.fields}>
+          <Pressable
+            style={styles.fieldRow}
+            onPress={() => navigation.navigate('SearchLocation', { target: 'pickup' })}
+          >
             <View style={[styles.dot, { backgroundColor: colors.success }]} />
-            <Text style={styles.pointText} numberOfLines={1}>
-              {pickup.title}
+            <Text style={styles.fieldText} numberOfLines={1}>
+              {pickup?.title ?? t('home.from')}
             </Text>
-          </View>
-          <View style={styles.divider} />
-          <View style={styles.pointRow}>
+            <Text style={styles.edit}>✎</Text>
+          </Pressable>
+
+          <View style={styles.fieldDivider} />
+
+          <Pressable
+            style={styles.fieldRow}
+            onPress={() =>
+              navigation.navigate('SearchLocation', { target: 'destination' })
+            }
+          >
             <View style={[styles.dot, { backgroundColor: colors.danger }]} />
             <Text
-              style={[
-                styles.pointText,
-                !destination && styles.pointPlaceholder,
-              ]}
+              style={[styles.fieldText, !destination && styles.placeholder]}
               numberOfLines={1}
             >
-              {destination ? destination.title : t('home.to')}
+              {destination?.title ?? t('home.to')}
             </Text>
-          </View>
-        </Card>
+            <Text style={styles.edit}>✎</Text>
+          </Pressable>
+        </View>
 
+        {/* Быстрые адреса */}
         <View style={styles.suggestions}>
-          {mockPlaces.map((place) => {
+          {mockPlaces.slice(0, 3).map((place) => {
             const active = destination?.id === place.id;
             return (
               <Pressable
@@ -87,8 +108,9 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
 
         <Button
           title={t('home.order')}
-          disabled={!destination}
+          disabled={!pickup || !destination}
           onPress={() =>
+            pickup &&
             destination &&
             navigation.navigate('Order', { pickup, destination })
           }
@@ -99,27 +121,47 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
-  mapArea: { flex: 1, padding: spacing.md },
+  safe: { flex: 1, backgroundColor: colors.surface },
+  mapArea: { flex: 1, padding: spacing.md, paddingBottom: 0 },
   sheet: {
     backgroundColor: colors.background,
     borderTopLeftRadius: radius.lg,
     borderTopRightRadius: radius.lg,
     padding: spacing.lg,
     paddingBottom: spacing.xl,
+    marginTop: -spacing.lg,
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: -3 },
+    elevation: 8,
   },
   heading: {
-    fontSize: fontSize.lg,
+    fontSize: fontSize.xl,
     fontWeight: '800',
     color: colors.text,
     marginBottom: spacing.md,
   },
-  pointCard: { marginBottom: spacing.md },
-  pointRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6 },
-  dot: { width: 10, height: 10, borderRadius: 5, marginRight: spacing.md },
-  pointText: { flex: 1, fontSize: fontSize.md, color: colors.text },
-  pointPlaceholder: { color: colors.textMuted },
-  divider: { height: 1, backgroundColor: colors.border, marginLeft: 22 },
+  fields: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.md,
+  },
+  fieldRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+  },
+  dot: { width: 11, height: 11, borderRadius: 6, marginRight: spacing.md },
+  fieldText: { flex: 1, fontSize: fontSize.md, color: colors.text },
+  placeholder: { color: colors.textMuted },
+  edit: { fontSize: fontSize.md, color: colors.textMuted },
+  fieldDivider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginLeft: 23,
+  },
   suggestions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -131,7 +173,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    maxWidth: '48%',
+    maxWidth: '100%',
   },
   chipActive: { backgroundColor: colors.primary },
   chipText: { fontSize: fontSize.sm, color: colors.text },

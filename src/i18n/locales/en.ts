@@ -83,6 +83,11 @@ export const en: Translations = {
     locationNeeded: 'Allow location access to calculate prayer times',
     allowLocation: 'Allow location',
   },
+  search: {
+    placeholder: 'Enter an address',
+    quick: 'Quick addresses',
+    empty: 'Nothing found',
+  },
   history: {
     title: 'Trip history',
     empty: 'Your trips will appear here',

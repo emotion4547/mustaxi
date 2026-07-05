@@ -9,7 +9,7 @@ import React, {
 import type { Locale, Translations } from '@/i18n';
 import { translations, interpolate } from '@/i18n';
 import { ru } from '@/i18n/locales/ru';
-import type { RidePreferences, UserProfile } from '@/types';
+import type { Place, RidePreferences, UserProfile } from '@/types';
 import { storage } from '@/services/storage';
 import { requestOtp, verifyOtp } from '@/services/api';
 
@@ -39,6 +39,11 @@ interface AppState {
   t: (path: Path, params?: Record<string, string | number>) => string;
   preferences: RidePreferences;
   setPreferences: (p: RidePreferences) => void;
+  /** Черновик поездки: точки «откуда» и «куда». */
+  pickup: Place | null;
+  setPickup: (p: Place | null) => void;
+  destination: Place | null;
+  setDestination: (p: Place | null) => void;
   profile: UserProfile;
   setProfile: (p: UserProfile) => void;
   isAuthenticated: boolean;
@@ -66,6 +71,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   const [preferences, setPreferences] =
     useState<RidePreferences>(defaultPreferences);
   const [profile, setProfile] = useState<UserProfile>(guestProfile);
+  const [pickup, setPickup] = useState<Place | null>(null);
+  const [destination, setDestination] = useState<Place | null>(null);
   const [isAuthenticated, setAuthenticated] = useState(false);
 
   // Восстановление сессии при запуске.
@@ -122,6 +129,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       t,
       preferences,
       setPreferences,
+      pickup,
+      setPickup,
+      destination,
+      setDestination,
       profile,
       setProfile,
       isAuthenticated,
@@ -134,6 +145,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       locale,
       t,
       preferences,
+      pickup,
+      destination,
       profile,
       isAuthenticated,
       sendOtp,

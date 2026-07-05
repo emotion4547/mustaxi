@@ -16,6 +16,7 @@ import { OrderScreen } from '@/screens/OrderScreen';
 import { RideScreen } from '@/screens/RideScreen';
 import { HistoryScreen } from '@/screens/HistoryScreen';
 import { RideDetailsScreen } from '@/screens/RideDetailsScreen';
+import { SearchLocationScreen } from '@/screens/SearchLocationScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -95,6 +96,11 @@ export const RootNavigator: React.FC = () => {
               name="RideDetails"
               component={RideDetailsScreen}
               options={{ headerShown: true, title: '' }}
+            />
+            <Stack.Screen
+              name="SearchLocation"
+              component={SearchLocationScreen}
+              options={{ presentation: 'modal' }}
             />
           </>
         )}
