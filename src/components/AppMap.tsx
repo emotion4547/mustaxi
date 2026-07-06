@@ -13,6 +13,15 @@ interface Props {
   pickupBadge?: string | null;
   /** Показывать кнопку «моё местоположение». */
   showLocate?: boolean;
+  /**
+   * Режим выбора точки: маркеры не рисуются, карта свободно двигается,
+   * а её центр сообщается через onCenter (пин рисует родительский экран).
+   */
+  pickMode?: boolean;
+  /** Колбэк с координатами центра карты (после перемещения). */
+  onCenter?: (center: LatLng) => void;
+  /** Текст-предупреждение, если карта не смогла загрузиться (офлайн). */
+  offlineNotice?: string;
   style?: object;
 }
 
@@ -50,6 +59,10 @@ const yandexHtml = (key: string) => `<!DOCTYPE html><html><head>
     clearTimeout(t);
     var map=new ymaps.Map('map',{center:[55.751,37.618],zoom:13,controls:[]},{suppressMapOpenBlock:true,yandexMapDisablePoiInteractivity:true});
     var last=null;
+    map.events.add('boundschange',function(){
+      var c=map.getCenter();
+      if(window.ReactNativeWebView) window.ReactNativeWebView.postMessage(JSON.stringify({type:'center',lat:c[0],lng:c[1]}));
+    });
     var PinLayout=ymaps.templateLayoutFactory.createClass(
       '<div style="position:absolute;transform:translate(-50%,-100%);text-align:center;white-space:nowrap">'+
       '{% if properties.badge %}<div class="badge"><span class="ico">◈</span>$[properties.badge]</div><div style="height:4px"></div>{% endif %}'+
@@ -57,6 +70,11 @@ const yandexHtml = (key: string) => `<!DOCTYPE html><html><head>
     var CarLayout=ymaps.templateLayoutFactory.createClass(
       '<div style="position:absolute;transform:translate(-50%,-50%)"><div class="car">🚕</div></div>');
     window.updateMap=function(d){
+      if(d.pick){
+        // Режим выбора точки: только начальное центрирование, без маркеров.
+        if(!window.__pickInit&&d.pickup){ window.__pickInit=true; map.setCenter([d.pickup.latitude,d.pickup.longitude],16); }
+        return;
+      }
       map.geoObjects.removeAll();
       var pts=[];
       if(d.pickup&&d.destination){
@@ -91,9 +109,17 @@ const LEAFLET_HTML = `<!DOCTYPE html><html><head>
   var map=L.map('map',{zoomControl:false,attributionControl:false}).setView([55.751,37.618],13);
   L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{maxZoom:20,subdomains:'abcd'}).addTo(map);
   var layers=[],last=null;
+  map.on('moveend',function(){
+    var c=map.getCenter();
+    if(window.ReactNativeWebView) window.ReactNativeWebView.postMessage(JSON.stringify({type:'center',lat:c.lat,lng:c.lng}));
+  });
   function pinIcon(color,badge){ var b=badge?('<div class="badge" style="position:absolute;left:50%;bottom:46px;transform:translateX(-50%)"><span class="ico">◈</span>'+badge+'</div>'):'';
     return L.divIcon({className:'',html:'<div style="position:relative">'+b+'${PIN_SVG('COLORPH')}'.replace('COLORPH',color)+'</div>',iconSize:[30,42],iconAnchor:[15,42]}); }
   window.updateMap=function(d){
+    if(d.pick){
+      if(!window.__pickInit&&d.pickup){ window.__pickInit=true; map.setView([d.pickup.latitude,d.pickup.longitude],16); }
+      return;
+    }
     layers.forEach(function(l){map.removeLayer(l)}); layers=[]; var pts=[];
     if(d.pickup&&d.destination){ layers.push(L.polyline([[d.pickup.latitude,d.pickup.longitude],[d.destination.latitude,d.destination.longitude]],{color:'#0A6B4E',weight:4,opacity:0.8,dashArray:'1 8'}).addTo(map)); }
     if(d.pickup){ last=[d.pickup.latitude,d.pickup.longitude]; layers.push(L.marker(last,{icon:pinIcon('#2E9E5B',d.pickupBadge)}).addTo(map)); pts.push(last); }
@@ -111,18 +137,23 @@ export const AppMap: React.FC<Props> = ({
   driver,
   pickupBadge,
   showLocate = true,
+  pickMode = false,
+  onCenter,
+  offlineNotice,
   style,
 }) => {
   const ref = useRef<WebView>(null);
   const [engine, setEngine] = useState<'yandex' | 'leaflet'>(
     YANDEX_KEY ? 'yandex' : 'leaflet',
   );
+  const [webFailed, setWebFailed] = useState(false);
 
   const payload = JSON.stringify({
     pickup,
     destination: destination ?? null,
     driver: driver ?? null,
     pickupBadge: pickupBadge ?? '',
+    pick: pickMode,
   });
 
   const push = () => {
@@ -137,8 +168,18 @@ export const AppMap: React.FC<Props> = ({
   }, [payload, engine]);
 
   const onMessage = (e: WebViewMessageEvent) => {
-    if (e.nativeEvent.data === 'MAP_FAILED' && engine !== 'leaflet') {
-      setEngine('leaflet');
+    const data = e.nativeEvent.data;
+    if (data === 'MAP_FAILED') {
+      if (engine !== 'leaflet') setEngine('leaflet');
+      return;
+    }
+    try {
+      const msg = JSON.parse(data) as { type?: string; lat?: number; lng?: number };
+      if (msg.type === 'center' && onCenter && msg.lat != null && msg.lng != null) {
+        onCenter({ latitude: msg.lat, longitude: msg.lng });
+      }
+    } catch {
+      // не-JSON сообщения игнорируем
     }
   };
 
@@ -153,11 +194,17 @@ export const AppMap: React.FC<Props> = ({
         source={{ html, baseUrl: 'https://mustaxi.app' }}
         onLoadEnd={push}
         onMessage={onMessage}
+        onError={() => setWebFailed(true)}
         style={styles.web}
         scrollEnabled={false}
         overScrollMode="never"
         androidLayerType="hardware"
       />
+      {webFailed && !!offlineNotice && (
+        <View style={styles.offline} pointerEvents="none">
+          <Text style={styles.offlineText}>{offlineNotice}</Text>
+        </View>
+      )}
       {showLocate && (
         <Pressable
           style={styles.locate}
@@ -200,5 +247,17 @@ const styles = StyleSheet.create({
     fontSize: 20,
     color: colors.primary,
     transform: [{ rotate: '-45deg' }],
+  },
+  offline: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surfaceAlt,
+    padding: 24,
+  },
+  offlineText: {
+    color: colors.textMuted,
+    fontSize: 14,
+    textAlign: 'center',
   },
 });

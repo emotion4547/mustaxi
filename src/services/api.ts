@@ -7,6 +7,7 @@
  * настоящий сервер меняется только реализация этого файла.
  */
 import type {
+  CarClass,
   Driver,
   DriverGenderPreference,
   FareEstimate,
@@ -63,6 +64,7 @@ export interface CreateRideInput {
   pickup: Place;
   destination: Place;
   preferences: RidePreferences;
+  carClass: CarClass;
 }
 
 export interface CreatedRide {
@@ -77,7 +79,11 @@ export interface CreatedRide {
 export async function createRide(input: CreateRideInput): Promise<CreatedRide> {
   await delay(1200); // «поиск ближайшего водителя»
   const driver = pickDriver(input.preferences.driverGender);
-  const fare = estimateFare(input.pickup.location, input.destination.location);
+  const fare = estimateFare(
+    input.pickup.location,
+    input.destination.location,
+    input.carClass,
+  );
   return {
     id: `ride-${Date.now()}`,
     driver,

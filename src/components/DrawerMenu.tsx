@@ -24,7 +24,9 @@ interface Item {
 interface Props {
   visible: boolean;
   onClose: () => void;
-  onNavigate: (screen: 'Prayer' | 'History' | 'Profile') => void;
+  onNavigate: (
+    screen: 'Prayer' | 'History' | 'Profile' | 'SavedAddresses',
+  ) => void;
 }
 
 const WIDTH = Math.min(Dimensions.get('window').width * 0.82, 340);
@@ -50,7 +52,9 @@ export const DrawerMenu: React.FC<Props> = ({ visible, onClose, onNavigate }) =>
     ]).start();
   }, [visible, tx, fade]);
 
-  const go = (screen: 'Prayer' | 'History' | 'Profile') => {
+  const go = (
+    screen: 'Prayer' | 'History' | 'Profile' | 'SavedAddresses',
+  ) => {
     onClose();
     setTimeout(() => onNavigate(screen), 180);
   };
@@ -59,7 +63,12 @@ export const DrawerMenu: React.FC<Props> = ({ visible, onClose, onNavigate }) =>
     { key: 'prayer', label: t('tabs.prayer'), glyph: '🕌', onPress: () => go('Prayer') },
     { key: 'history', label: t('profile.trips'), glyph: '🧾', onPress: () => go('History') },
     { key: 'payment', label: t('profile.payment'), glyph: '💳' },
-    { key: 'addresses', label: t('drawer.addresses'), glyph: '📍' },
+    {
+      key: 'addresses',
+      label: t('drawer.addresses'),
+      glyph: '📍',
+      onPress: () => go('SavedAddresses'),
+    },
     { key: 'support', label: t('drawer.support'), glyph: '💬' },
     { key: 'settings', label: t('profile.settings'), glyph: '⚙️', onPress: () => go('Profile') },
     { key: 'info', label: t('drawer.info'), glyph: 'ℹ️' },

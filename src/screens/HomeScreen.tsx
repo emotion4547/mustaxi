@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { AppMap } from '@/components/AppMap';
@@ -8,9 +9,11 @@ import { DrawerMenu } from '@/components/DrawerMenu';
 import { useApp } from '@/store/AppContext';
 import { useCurrentLocation } from '@/features/location/useCurrentLocation';
 import { reverseGeocode } from '@/services/geocoding';
+import { storage } from '@/services/storage';
 import { colors, fontSize, radius, spacing } from '@/theme';
 import { mockPlaces, pickDriver } from '@/data/mockData';
-import type { Place } from '@/types';
+import { KIND_GLYPHS } from '@/screens/SavedAddressesScreen';
+import type { Place, SavedAddress } from '@/types';
 import type { RootStackParamList } from '@/navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
@@ -21,6 +24,14 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const { t, pickup, setPickup, destination, setDestination } = useApp();
   const { location, granted } = useCurrentLocation();
   const [drawer, setDrawer] = useState(false);
+  const [saved, setSaved] = useState<SavedAddress[]>([]);
+
+  // Сохранённые адреса обновляем при каждом возврате на экран.
+  useFocusEffect(
+    useCallback(() => {
+      storage.getSavedAddresses().then(setSaved);
+    }, []),
+  );
 
   useEffect(() => {
     if (pickup) return;
@@ -87,6 +98,26 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
+          {saved.map((addr) => (
+            <Pressable
+              key={addr.id}
+              style={styles.placeRow}
+              onPress={() => chooseDestination(addr.place)}
+            >
+              <View style={styles.placePin}>
+                <Text style={styles.placePinIcon}>{KIND_GLYPHS[addr.kind]}</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.placeTitle} numberOfLines={1}>
+                  {addr.label}
+                </Text>
+                <Text style={styles.placeSub} numberOfLines={1}>
+                  {addr.place.subtitle || addr.place.title}
+                </Text>
+              </View>
+              <Text style={styles.chevron}>›</Text>
+            </Pressable>
+          ))}
           {mockPlaces.map((place) => (
             <Pressable
               key={place.id}

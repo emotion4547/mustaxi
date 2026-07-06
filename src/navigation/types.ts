@@ -1,4 +1,10 @@
-import type { Place, RidePreferences, RideRecord } from '@/types';
+import type {
+  CarClass,
+  Place,
+  RidePreferences,
+  RideRecord,
+  SavedAddressKind,
+} from '@/types';
 
 export type RootStackParamList = {
   Login: undefined;
@@ -13,6 +19,7 @@ export type RootStackParamList = {
     pickup: Place;
     destination: Place;
     preferences: RidePreferences;
+    carClass: CarClass;
   };
   History: undefined;
   RideDetails: {
@@ -21,5 +28,12 @@ export type RootStackParamList = {
   SearchLocation: {
     /** Какую точку выбираем. */
     target: 'pickup' | 'destination';
+    /** Если задано — выбранное место сохраняется как адрес этого типа. */
+    saveAs?: SavedAddressKind;
   };
+  /** Выбор точки перетаскиванием карты (центральный пин). */
+  MapPick: {
+    target: 'pickup' | 'destination';
+  };
+  SavedAddresses: undefined;
 };

@@ -37,14 +37,31 @@ export interface RidePreferences {
 
 export type PaymentMethod = 'cash' | 'card' | 'wallet';
 
+/** Класс автомобиля. */
+export type CarClass = 'econom' | 'comfort' | 'minivan';
+
 export interface FareEstimate {
   base: number;
   distanceKm: number;
   distanceFare: number;
   total: number;
   currency: string;
+  carClass: CarClass;
   /** Оплата без ссудного процента (риба). Чаевые — по желанию, отдельно. */
   ribaFree: true;
+}
+
+/** Тип сохранённого адреса. */
+export type SavedAddressKind = 'home' | 'work' | 'custom';
+
+/** Сохранённый адрес пользователя («Дом», «Работа», произвольный). */
+export interface SavedAddress {
+  id: string;
+  kind: SavedAddressKind;
+  /** Отображаемое имя («Дом», «Работа» или своё). */
+  label: string;
+  place: Place;
+  createdAt: number;
 }
 
 export type RideStatus =
@@ -108,5 +125,7 @@ export interface RideRecord {
   currency: string;
   status: 'completed' | 'cancelled';
   preferences: RidePreferences;
+  /** Класс авто (может отсутствовать в старых записях). */
+  carClass?: CarClass;
   createdAt: number;
 }

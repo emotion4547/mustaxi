@@ -15,6 +15,8 @@ import { RideScreen } from '@/screens/RideScreen';
 import { HistoryScreen } from '@/screens/HistoryScreen';
 import { RideDetailsScreen } from '@/screens/RideDetailsScreen';
 import { SearchLocationScreen } from '@/screens/SearchLocationScreen';
+import { MapPickScreen } from '@/screens/MapPickScreen';
+import { SavedAddressesScreen } from '@/screens/SavedAddressesScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -63,6 +65,12 @@ export const RootNavigator: React.FC = () => {
               name="SearchLocation"
               component={SearchLocationScreen}
               options={{ presentation: 'modal' }}
+            />
+            <Stack.Screen name="MapPick" component={MapPickScreen} />
+            <Stack.Screen
+              name="SavedAddresses"
+              component={SavedAddressesScreen}
+              options={{ headerShown: true, title: '' }}
             />
           </>
         )}

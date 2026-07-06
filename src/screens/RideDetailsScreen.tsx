@@ -50,6 +50,12 @@ export const RideDetailsScreen: React.FC<Props> = ({ route }) => {
                 : t('ride.male')
             }
           />
+          {record.carClass && (
+            <Row
+              label={t('order.carClass')}
+              value={t(`order.${record.carClass}`)}
+            />
+          )}
           <Row
             label={t('rideDetails.date')}
             value={new Date(record.createdAt).toLocaleString(locale)}

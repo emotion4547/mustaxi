@@ -1,8 +1,25 @@
-import type { FareEstimate, LatLng } from '@/types';
+import type { CarClass, FareEstimate, LatLng } from '@/types';
 
 const BASE_FARE = 120; // подача
 const PER_KM = 28;
 const CURRENCY = '₽';
+
+/** Описание тарифного класса авто. */
+export interface CarClassInfo {
+  id: CarClass;
+  /** Множитель к километровой части тарифа. */
+  multiplier: number;
+  /** Надбавка к подаче. */
+  baseExtra: number;
+  glyph: string;
+}
+
+/** Классы авто и их коэффициенты (прозрачный тариф, без скрытых надбавок). */
+export const CAR_CLASSES: CarClassInfo[] = [
+  { id: 'econom', multiplier: 1, baseExtra: 0, glyph: '🚗' },
+  { id: 'comfort', multiplier: 1.25, baseExtra: 40, glyph: '🚙' },
+  { id: 'minivan', multiplier: 1.5, baseExtra: 80, glyph: '🚐' },
+];
 
 const toRad = (deg: number) => (deg * Math.PI) / 180;
 
@@ -25,16 +42,24 @@ export function haversineKm(a: LatLng, b: LatLng): number {
  * прозрачная ставка за километр. Никаких скрытых надбавок и рассрочек
  * под процент. Чаевые водителю — добровольны и считаются отдельно.
  */
-export function estimateFare(pickup: LatLng, destination: LatLng): FareEstimate {
+export function estimateFare(
+  pickup: LatLng,
+  destination: LatLng,
+  carClass: CarClass = 'econom',
+): FareEstimate {
+  const info =
+    CAR_CLASSES.find((c) => c.id === carClass) ?? CAR_CLASSES[0];
   const distanceKm = Math.max(0.1, haversineKm(pickup, destination));
-  const distanceFare = Math.round(distanceKm * PER_KM);
-  const total = BASE_FARE + distanceFare;
+  const base = BASE_FARE + info.baseExtra;
+  const distanceFare = Math.round(distanceKm * PER_KM * info.multiplier);
+  const total = base + distanceFare;
   return {
-    base: BASE_FARE,
+    base,
     distanceKm: Math.round(distanceKm * 10) / 10,
     distanceFare,
     total,
     currency: CURRENCY,
+    carClass: info.id,
     ribaFree: true,
   };
 }

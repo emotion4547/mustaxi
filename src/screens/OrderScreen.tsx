@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
@@ -8,9 +8,14 @@ import { Card } from '@/components/Card';
 import { Toggle } from '@/components/Toggle';
 import { SegmentedControl } from '@/components/SegmentedControl';
 import { useApp } from '@/store/AppContext';
-import { colors, fontSize, spacing } from '@/theme';
-import { estimateFare, formatPrice } from '@/features/payment/fare';
-import type { DriverGenderPreference, PaymentMethod } from '@/types';
+import { colors, fontSize, radius, spacing } from '@/theme';
+import { CAR_CLASSES, estimateFare, formatPrice } from '@/features/payment/fare';
+import type {
+  CarClass,
+  DriverGenderPreference,
+  FareEstimate,
+  PaymentMethod,
+} from '@/types';
 import type { RootStackParamList } from '@/navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Order'>;
@@ -19,11 +24,18 @@ export const OrderScreen: React.FC<Props> = ({ navigation, route }) => {
   const { pickup, destination } = route.params;
   const { t, preferences, setPreferences } = useApp();
   const [payment, setPayment] = useState<PaymentMethod>('cash');
+  const [carClass, setCarClass] = useState<CarClass>('econom');
 
-  const fare = useMemo(
-    () => estimateFare(pickup.location, destination.location),
-    [pickup, destination],
-  );
+  // Цена по каждому классу — чтобы показывать её прямо на карточках выбора.
+  const fares = useMemo(() => {
+    const map = {} as Record<CarClass, FareEstimate>;
+    for (const c of CAR_CLASSES) {
+      map[c.id] = estimateFare(pickup.location, destination.location, c.id);
+    }
+    return map;
+  }, [pickup, destination]);
+
+  const fare = fares[carClass];
 
   const genderSegments: { value: DriverGenderPreference; label: string }[] = [
     { value: 'any', label: t('order.any') },
@@ -51,6 +63,35 @@ export const OrderScreen: React.FC<Props> = ({ navigation, route }) => {
             {destination.title}
           </Text>
         </Card>
+
+        {/* Класс авто */}
+        <Text style={styles.sectionLabel}>{t('order.carClass')}</Text>
+        <View style={styles.classRow}>
+          {CAR_CLASSES.map((c) => {
+            const active = carClass === c.id;
+            return (
+              <Pressable
+                key={c.id}
+                style={[styles.classCard, active && styles.classCardActive]}
+                onPress={() => setCarClass(c.id)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+              >
+                <Text style={styles.classGlyph}>{c.glyph}</Text>
+                <Text
+                  style={[styles.className, active && styles.classNameActive]}
+                >
+                  {t(`order.${c.id}`)}
+                </Text>
+                <Text
+                  style={[styles.classPrice, active && styles.classPriceActive]}
+                >
+                  {formatPrice(fares[c.id].total, fares[c.id].currency)}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
 
         {/* Пол водителя */}
         <Text style={styles.sectionLabel}>{t('order.driverGender')}</Text>
@@ -128,6 +169,7 @@ export const OrderScreen: React.FC<Props> = ({ navigation, route }) => {
               pickup,
               destination,
               preferences,
+              carClass,
             })
           }
         />
@@ -149,6 +191,26 @@ const styles = StyleSheet.create({
   },
   route: { fontSize: fontSize.md, color: colors.text, fontWeight: '600' },
   routeArrow: { color: colors.textMuted, marginVertical: 2 },
+  classRow: { flexDirection: 'row', gap: spacing.sm },
+  classCard: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: spacing.md,
+    gap: 2,
+  },
+  classCardActive: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryLight,
+  },
+  classGlyph: { fontSize: 24 },
+  className: { fontSize: fontSize.sm, color: colors.textMuted, fontWeight: '600' },
+  classNameActive: { color: colors.primaryDark },
+  classPrice: { fontSize: fontSize.sm, color: colors.text, fontWeight: '700' },
+  classPriceActive: { color: colors.primary },
   fareCard: { backgroundColor: colors.primaryLight, borderColor: colors.primary },
   fareRow: {
     flexDirection: 'row',
