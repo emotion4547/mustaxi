@@ -11,6 +11,8 @@ interface Props {
   driver?: LatLng | null;
   /** Текст на карточке подачи (напр. «Подача 8 мин»). */
   pickupBadge?: string | null;
+  /** Геометрия реального маршрута; если нет — рисуется пунктирная прямая. */
+  routePolyline?: LatLng[] | null;
   /** Показывать кнопку «моё местоположение». */
   showLocate?: boolean;
   /**
@@ -77,8 +79,14 @@ const yandexHtml = (key: string) => `<!DOCTYPE html><html><head>
       }
       map.geoObjects.removeAll();
       var pts=[];
-      if(d.pickup&&d.destination){
-        map.geoObjects.add(new ymaps.Polyline([[d.pickup.latitude,d.pickup.longitude],[d.destination.latitude,d.destination.longitude]],{},{strokeColor:'#0A6B4E',strokeWidth:4,strokeStyle:'shortdash',strokeOpacity:0.8}));
+      var hasRoute=d.routePolyline&&d.routePolyline.length>1;
+      var line=hasRoute
+        ? d.routePolyline.map(function(p){return [p.latitude,p.longitude];})
+        : (d.pickup&&d.destination
+            ? [[d.pickup.latitude,d.pickup.longitude],[d.destination.latitude,d.destination.longitude]]
+            : null);
+      if(line){
+        map.geoObjects.add(new ymaps.Polyline(line,{},{strokeColor:'#0A6B4E',strokeWidth:4,strokeStyle:hasRoute?'solid':'shortdash',strokeOpacity:0.85}));
       }
       if(d.pickup){ last=[d.pickup.latitude,d.pickup.longitude];
         map.geoObjects.add(new ymaps.Placemark(last,{badge:d.pickupBadge||'',svg:'${PIN_SVG('#2E9E5B')}'},{iconLayout:PinLayout,iconShape:{type:'Rectangle',coordinates:[[-16,-46],[16,2]]}}));
@@ -121,7 +129,13 @@ const LEAFLET_HTML = `<!DOCTYPE html><html><head>
       return;
     }
     layers.forEach(function(l){map.removeLayer(l)}); layers=[]; var pts=[];
-    if(d.pickup&&d.destination){ layers.push(L.polyline([[d.pickup.latitude,d.pickup.longitude],[d.destination.latitude,d.destination.longitude]],{color:'#0A6B4E',weight:4,opacity:0.8,dashArray:'1 8'}).addTo(map)); }
+    var hasRoute=d.routePolyline&&d.routePolyline.length>1;
+    var line=hasRoute
+      ? d.routePolyline.map(function(p){return [p.latitude,p.longitude];})
+      : (d.pickup&&d.destination
+          ? [[d.pickup.latitude,d.pickup.longitude],[d.destination.latitude,d.destination.longitude]]
+          : null);
+    if(line){ layers.push(L.polyline(line,{color:'#0A6B4E',weight:4,opacity:0.85,dashArray:hasRoute?null:'1 8'}).addTo(map)); }
     if(d.pickup){ last=[d.pickup.latitude,d.pickup.longitude]; layers.push(L.marker(last,{icon:pinIcon('#2E9E5B',d.pickupBadge)}).addTo(map)); pts.push(last); }
     if(d.destination){ var dd=[d.destination.latitude,d.destination.longitude]; layers.push(L.marker(dd,{icon:pinIcon('#D24B4B','')}).addTo(map)); pts.push(dd); }
     if(d.driver){ var dr=[d.driver.latitude,d.driver.longitude]; layers.push(L.marker(dr,{icon:L.divIcon({className:'',html:'<div class="car">🚕</div>',iconSize:[36,36],iconAnchor:[18,18]})}).addTo(map)); pts.push(dr); }
@@ -136,6 +150,7 @@ export const AppMap: React.FC<Props> = ({
   destination,
   driver,
   pickupBadge,
+  routePolyline,
   showLocate = true,
   pickMode = false,
   onCenter,
@@ -153,6 +168,7 @@ export const AppMap: React.FC<Props> = ({
     destination: destination ?? null,
     driver: driver ?? null,
     pickupBadge: pickupBadge ?? '',
+    routePolyline: routePolyline ?? null,
     pick: pickMode,
   });
 

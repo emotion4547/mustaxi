@@ -16,7 +16,8 @@ import type { RootStackParamList } from '@/navigation/types';
 type Props = NativeStackScreenProps<RootStackParamList, 'Ride'>;
 
 export const RideScreen: React.FC<Props> = ({ navigation, route }) => {
-  const { pickup, destination, preferences, carClass } = route.params;
+  const { pickup, destination, preferences, carClass, routePolyline, distanceKm } =
+    route.params;
   const { t } = useApp();
 
   const [ride, setRide] = useState<CreatedRide | null>(null);
@@ -30,7 +31,7 @@ export const RideScreen: React.FC<Props> = ({ navigation, route }) => {
     let unsub: (() => void) | undefined;
     let active = true;
 
-    createRide({ pickup, destination, preferences, carClass }).then((created) => {
+    createRide({ pickup, destination, preferences, carClass, distanceKm }).then((created) => {
       if (!active) return;
       setRide(created);
       setDriverLoc(created.driver.location);
@@ -86,6 +87,7 @@ export const RideScreen: React.FC<Props> = ({ navigation, route }) => {
           pickup={pickup.location}
           destination={destination.location}
           driver={driverLoc}
+          routePolyline={routePolyline}
           showLocate={false}
         />
       </View>

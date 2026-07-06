@@ -63,6 +63,8 @@ export const ar: Translations = {
     card: 'بطاقة',
     wallet: 'المحفظة',
     fare: 'الأجرة',
+    routeInfo: '{km} كم · ~{min} د',
+    approx: '(خط مستقيم)',
     ribaFree: 'بدون فائدة ربوية. تسعير شفاف.',
     confirmOrder: 'اطلب مقابل {price}',
   },

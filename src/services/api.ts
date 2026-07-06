@@ -20,7 +20,7 @@ import type {
   UserProfile,
 } from '@/types';
 import { pickDriver } from '@/data/mockData';
-import { estimateFare } from '@/features/payment/fare';
+import { estimateFare, estimateFareForDistance } from '@/features/payment/fare';
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -65,6 +65,8 @@ export interface CreateRideInput {
   destination: Place;
   preferences: RidePreferences;
   carClass: CarClass;
+  /** Реальное расстояние маршрута (из Routing API), если известно. */
+  distanceKm?: number;
 }
 
 export interface CreatedRide {
@@ -79,11 +81,15 @@ export interface CreatedRide {
 export async function createRide(input: CreateRideInput): Promise<CreatedRide> {
   await delay(1200); // «поиск ближайшего водителя»
   const driver = pickDriver(input.preferences.driverGender);
-  const fare = estimateFare(
-    input.pickup.location,
-    input.destination.location,
-    input.carClass,
-  );
+  // Цена — от реального расстояния маршрута; без него — по прямой.
+  const fare =
+    input.distanceKm != null
+      ? estimateFareForDistance(input.distanceKm, input.carClass)
+      : estimateFare(
+          input.pickup.location,
+          input.destination.location,
+          input.carClass,
+        );
   return {
     id: `ride-${Date.now()}`,
     driver,

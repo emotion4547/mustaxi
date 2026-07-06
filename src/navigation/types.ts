@@ -1,5 +1,6 @@
 import type {
   CarClass,
+  LatLng,
   Place,
   RidePreferences,
   RideRecord,
@@ -20,6 +21,9 @@ export type RootStackParamList = {
     destination: Place;
     preferences: RidePreferences;
     carClass: CarClass;
+    /** Геометрия и длина реального маршрута (если получены). */
+    routePolyline?: LatLng[];
+    distanceKm?: number;
   };
   History: undefined;
   RideDetails: {

@@ -63,6 +63,8 @@ export const en: Translations = {
     card: 'Card',
     wallet: 'Wallet',
     fare: 'Fare',
+    routeInfo: '{km} km · ~{min} min',
+    approx: '(straight line)',
     ribaFree: 'Interest-free (riba-free). Transparent pricing.',
     confirmOrder: 'Request for {price}',
   },

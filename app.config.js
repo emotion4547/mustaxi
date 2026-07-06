@@ -6,6 +6,7 @@
 // поиск адреса откатывается на Nominatim (OSM).
 const yandexMapsKey = process.env.YANDEX_MAPS_API_KEY || '';
 const yandexGeocoderKey = process.env.YANDEX_GEOCODER_API_KEY || '';
+const yandexRoutingKey = process.env.YANDEX_ROUTING_API_KEY || '';
 
 module.exports = {
   expo: {
@@ -49,6 +50,7 @@ module.exports = {
       yandex: {
         mapsKey: yandexMapsKey,
         geocoderKey: yandexGeocoderKey,
+        routingKey: yandexRoutingKey,
       },
       eas: {
         projectId: '200a1e9d-10c2-4c54-a7f7-6bf5efc3ca4f',

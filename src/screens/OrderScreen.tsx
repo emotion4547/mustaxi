@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -9,7 +9,13 @@ import { Toggle } from '@/components/Toggle';
 import { SegmentedControl } from '@/components/SegmentedControl';
 import { useApp } from '@/store/AppContext';
 import { colors, fontSize, radius, spacing } from '@/theme';
-import { CAR_CLASSES, estimateFare, formatPrice } from '@/features/payment/fare';
+import {
+  CAR_CLASSES,
+  estimateFare,
+  estimateFareForDistance,
+  formatPrice,
+} from '@/features/payment/fare';
+import { getRoute, type RouteInfo } from '@/services/routing';
 import type {
   CarClass,
   DriverGenderPreference,
@@ -25,15 +31,30 @@ export const OrderScreen: React.FC<Props> = ({ navigation, route }) => {
   const { t, preferences, setPreferences } = useApp();
   const [payment, setPayment] = useState<PaymentMethod>('cash');
   const [carClass, setCarClass] = useState<CarClass>('econom');
+  const [routeInfo, setRouteInfo] = useState<RouteInfo | null>(null);
 
-  // Цена по каждому классу — чтобы показывать её прямо на карточках выбора.
+  // Реальный маршрут (Яндекс) — расстояние, время, геометрия.
+  useEffect(() => {
+    let active = true;
+    getRoute(pickup.location, destination.location)
+      .then((r) => active && setRouteInfo(r))
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [pickup, destination]);
+
+  // Цена по каждому классу — от реального расстояния, если оно уже получено.
   const fares = useMemo(() => {
     const map = {} as Record<CarClass, FareEstimate>;
     for (const c of CAR_CLASSES) {
-      map[c.id] = estimateFare(pickup.location, destination.location, c.id);
+      map[c.id] =
+        routeInfo != null
+          ? estimateFareForDistance(routeInfo.distanceKm, c.id)
+          : estimateFare(pickup.location, destination.location, c.id);
     }
     return map;
-  }, [pickup, destination]);
+  }, [pickup, destination, routeInfo]);
 
   const fare = fares[carClass];
 
@@ -62,6 +83,15 @@ export const OrderScreen: React.FC<Props> = ({ navigation, route }) => {
           <Text style={styles.route} numberOfLines={1}>
             {destination.title}
           </Text>
+          {routeInfo && (
+            <Text style={styles.routeMeta}>
+              {t('order.routeInfo', {
+                km: routeInfo.distanceKm,
+                min: routeInfo.durationMin,
+              })}
+              {!routeInfo.precise ? ` ${t('order.approx')}` : ''}
+            </Text>
+          )}
         </Card>
 
         {/* Класс авто */}
@@ -170,6 +200,8 @@ export const OrderScreen: React.FC<Props> = ({ navigation, route }) => {
               destination,
               preferences,
               carClass,
+              routePolyline: routeInfo?.polyline,
+              distanceKm: routeInfo?.distanceKm,
             })
           }
         />
@@ -191,6 +223,12 @@ const styles = StyleSheet.create({
   },
   route: { fontSize: fontSize.md, color: colors.text, fontWeight: '600' },
   routeArrow: { color: colors.textMuted, marginVertical: 2 },
+  routeMeta: {
+    fontSize: fontSize.sm,
+    color: colors.primary,
+    fontWeight: '600',
+    marginTop: spacing.sm,
+  },
   classRow: { flexDirection: 'row', gap: spacing.sm },
   classCard: {
     flex: 1,

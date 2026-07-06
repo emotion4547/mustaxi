@@ -47,9 +47,20 @@ export function estimateFare(
   destination: LatLng,
   carClass: CarClass = 'econom',
 ): FareEstimate {
+  return estimateFareForDistance(haversineKm(pickup, destination), carClass);
+}
+
+/**
+ * Тариф от известного расстояния (например, реального маршрута из
+ * Yandex Routing) — та же прозрачная формула без риба.
+ */
+export function estimateFareForDistance(
+  rawDistanceKm: number,
+  carClass: CarClass = 'econom',
+): FareEstimate {
   const info =
     CAR_CLASSES.find((c) => c.id === carClass) ?? CAR_CLASSES[0];
-  const distanceKm = Math.max(0.1, haversineKm(pickup, destination));
+  const distanceKm = Math.max(0.1, rawDistanceKm);
   const base = BASE_FARE + info.baseExtra;
   const distanceFare = Math.round(distanceKm * PER_KM * info.multiplier);
   const total = base + distanceFare;

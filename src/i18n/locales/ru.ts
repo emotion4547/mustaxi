@@ -61,6 +61,8 @@ export const ru = {
     card: 'Карта',
     wallet: 'Кошелёк',
     fare: 'Стоимость',
+    routeInfo: '{km} км · ~{min} мин',
+    approx: '(по прямой)',
     ribaFree: 'Без ссудного процента (риба). Прозрачный тариф.',
     confirmOrder: 'Заказать за {price}',
   },

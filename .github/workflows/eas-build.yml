@@ -54,6 +54,7 @@ jobs:
         env:
           YANDEX_MAPS_API_KEY: ${{ secrets.YANDEX_MAPS_API_KEY }}
           YANDEX_GEOCODER_API_KEY: ${{ secrets.YANDEX_GEOCODER_API_KEY }}
+          YANDEX_ROUTING_API_KEY: ${{ secrets.YANDEX_ROUTING_API_KEY }}
         run: |
           eas build \
             --platform android \
