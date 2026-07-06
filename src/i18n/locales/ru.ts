@@ -78,6 +78,14 @@ export const ru = {
     cancel: 'Отменить поездку',
     female: 'Водитель-женщина',
     male: 'Водитель-мужчина',
+    share: 'Поделиться',
+    sos: 'SOS',
+    shareMessage:
+      'Я еду в такси MusTaxi: {from} → {to}. Водитель: {driver}, {car}, гос. номер {plate}.',
+    sosMessage: 'SOS! Мне нужна помощь. Я в такси по маршруту {from} → {to}.',
+    rateTitle: 'Оцените поездку',
+    commentPlaceholder: 'Комментарий (необязательно)',
+    rate: 'Оценить',
   },
   prayer: {
     title: 'Время намаза',
@@ -138,6 +146,12 @@ export const ru = {
     driver: 'Водитель',
     date: 'Дата',
     status: 'Статус',
+    receipt: 'Чек',
+    base: 'Подача',
+    distance: 'Пробег ({km} км)',
+    total: 'Итого',
+    share: 'Поделиться чеком',
+    rating: 'Ваша оценка',
   },
   profile: {
     title: 'Профиль',

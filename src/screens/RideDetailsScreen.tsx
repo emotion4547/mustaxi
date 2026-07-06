@@ -1,9 +1,10 @@
 import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { Card } from '@/components/Card';
+import { Button } from '@/components/Button';
 import { useApp } from '@/store/AppContext';
 import { colors, fontSize, spacing } from '@/theme';
 import type { RootStackParamList } from '@/navigation/types';
@@ -28,6 +29,25 @@ export const RideDetailsScreen: React.FC<Props> = ({ route }) => {
   if (record.preferences.quietRide) prefs.push(t('order.quietRide'));
   if (record.preferences.fasting) prefs.push(t('order.fasting'));
   if (record.preferences.prayerStop) prefs.push(t('order.prayerStop'));
+
+  /** Текстовый чек для отправки (мессенджер, почта и т.п.). */
+  const shareReceipt = () => {
+    const lines = [
+      `MusTaxi — ${t('rideDetails.receipt')}`,
+      `${record.pickupTitle} → ${record.destinationTitle}`,
+      record.fareBase != null
+        ? `${t('rideDetails.base')}: ${record.fareBase} ${record.currency}`
+        : null,
+      record.fareDistance != null
+        ? `${t('rideDetails.distance', { km: record.distanceKm ?? 0 })}: ${record.fareDistance} ${record.currency}`
+        : null,
+      `${t('rideDetails.total')}: ${record.fareTotal} ${record.currency}`,
+      `✓ ${t('order.ribaFree')}`,
+    ]
+      .filter(Boolean)
+      .join('\n');
+    Share.share({ message: lines }).catch(() => {});
+  };
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
@@ -79,12 +99,48 @@ export const RideDetailsScreen: React.FC<Props> = ({ route }) => {
           </Card>
         )}
 
+        {/* Оценка водителя */}
+        {record.rating != null && (
+          <Card style={styles.section}>
+            <Text style={styles.blockTitle}>{t('rideDetails.rating')}</Text>
+            <Text style={styles.starsLine}>
+              {'★'.repeat(record.rating)}
+              {'☆'.repeat(Math.max(0, 5 - record.rating))}
+            </Text>
+            {!!record.comment && (
+              <Text style={styles.commentText}>{record.comment}</Text>
+            )}
+          </Card>
+        )}
+
+        {/* Чек поездки */}
         <Card style={[styles.section, styles.fareCard]}>
-          <Text style={styles.fareLabel}>{t('order.fare')}</Text>
-          <Text style={styles.farePrice}>
-            {record.fareTotal} {record.currency}
-          </Text>
+          <Text style={styles.blockTitle}>{t('rideDetails.receipt')}</Text>
+          {record.fareBase != null && (
+            <Row
+              label={t('rideDetails.base')}
+              value={`${record.fareBase} ${record.currency}`}
+            />
+          )}
+          {record.fareDistance != null && (
+            <Row
+              label={t('rideDetails.distance', { km: record.distanceKm ?? 0 })}
+              value={`${record.fareDistance} ${record.currency}`}
+            />
+          )}
+          <View style={styles.totalRow}>
+            <Text style={styles.fareLabel}>{t('rideDetails.total')}</Text>
+            <Text style={styles.farePrice}>
+              {record.fareTotal} {record.currency}
+            </Text>
+          </View>
           <Text style={styles.ribaFree}>✓ {t('order.ribaFree')}</Text>
+          <Button
+            title={t('rideDetails.share')}
+            variant="secondary"
+            onPress={shareReceipt}
+            style={{ marginTop: spacing.md }}
+          />
         </Card>
       </ScrollView>
     </SafeAreaView>
@@ -122,12 +178,28 @@ const styles = StyleSheet.create({
   },
   chipText: { fontSize: fontSize.sm, color: colors.primary, fontWeight: '600' },
   fareCard: { backgroundColor: colors.primaryLight, borderColor: colors.primary },
-  fareLabel: { fontSize: fontSize.sm, color: colors.textMuted },
+  fareLabel: { fontSize: fontSize.md, color: colors.text, fontWeight: '700' },
+  totalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: spacing.sm,
+  },
   farePrice: {
-    fontSize: fontSize.xxl,
+    fontSize: fontSize.xl,
     fontWeight: '800',
     color: colors.primary,
-    marginTop: 2,
+  },
+  starsLine: {
+    fontSize: 26,
+    color: colors.accent,
+    marginTop: spacing.xs,
+    letterSpacing: 4,
+  },
+  commentText: {
+    fontSize: fontSize.sm,
+    color: colors.textMuted,
+    marginTop: spacing.xs,
   },
   ribaFree: {
     fontSize: fontSize.sm,

@@ -80,6 +80,14 @@ export const ar: Translations = {
     cancel: 'إلغاء الرحلة',
     female: 'سائقة',
     male: 'سائق',
+    share: 'مشاركة',
+    sos: 'نجدة',
+    shareMessage:
+      'أنا في رحلة مع MusTaxi: {from} ← {to}. السائق: {driver}، {car}، اللوحة {plate}.',
+    sosMessage: 'نجدة! أحتاج للمساعدة. أنا في سيارة أجرة على الطريق {from} ← {to}.',
+    rateTitle: 'قيّم رحلتك',
+    commentPlaceholder: 'تعليق (اختياري)',
+    rate: 'تقييم',
   },
   prayer: {
     title: 'مواقيت الصلاة',
@@ -140,6 +148,12 @@ export const ar: Translations = {
     driver: 'السائق',
     date: 'التاريخ',
     status: 'الحالة',
+    receipt: 'الإيصال',
+    base: 'رسوم أساسية',
+    distance: 'المسافة ({km} كم)',
+    total: 'الإجمالي',
+    share: 'مشاركة الإيصال',
+    rating: 'تقييمك',
   },
   profile: {
     title: 'الملف الشخصي',

@@ -1,5 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Pressable,
+  Share,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
@@ -24,6 +32,8 @@ export const RideScreen: React.FC<Props> = ({ navigation, route }) => {
   const [status, setStatus] = useState<RideStatus>('searching');
   const [eta, setEta] = useState(0);
   const [driverLoc, setDriverLoc] = useState<LatLng | null>(null);
+  const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState('');
   const savedRef = useRef(false);
 
   // 1) Создаём заказ и подписываемся на обновления.
@@ -61,6 +71,9 @@ export const RideScreen: React.FC<Props> = ({ navigation, route }) => {
       driverGender: ride.driver.gender,
       fareTotal: ride.fare.total,
       currency: ride.fare.currency,
+      fareBase: ride.fare.base,
+      fareDistance: ride.fare.distanceFare,
+      distanceKm: ride.fare.distanceKm,
       status: 'completed',
       preferences,
       carClass,
@@ -79,6 +92,45 @@ export const RideScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   const goHome = () => navigation.navigate('Home');
+
+  /** Ссылка на точку (текущее положение машины или подача). */
+  const geoLink = (p: LatLng) =>
+    `https://yandex.ru/maps/?pt=${p.longitude},${p.latitude}&z=16`;
+
+  /** «Поделиться поездкой»: маршрут, водитель, живая точка. */
+  const shareRide = () => {
+    if (!ride) return;
+    Share.share({
+      message:
+        t('ride.shareMessage', {
+          driver: ride.driver.name,
+          car: ride.driver.carModel,
+          plate: ride.driver.carPlate,
+          from: pickup.title,
+          to: destination.title,
+        }) + `\n${geoLink(driverLoc ?? pickup.location)}`,
+    }).catch(() => {});
+  };
+
+  /** SOS: срочное сообщение с координатами. */
+  const shareSos = () => {
+    Share.share({
+      message:
+        t('ride.sosMessage', { from: pickup.title, to: destination.title }) +
+        `\n${geoLink(driverLoc ?? pickup.location)}`,
+    }).catch(() => {});
+  };
+
+  /** Сохранение оценки водителя в запись истории. */
+  const submitRating = async () => {
+    if (ride && rating > 0) {
+      await storage.updateHistory(ride.id, {
+        rating,
+        comment: comment.trim() || undefined,
+      });
+    }
+    goHome();
+  };
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -141,13 +193,59 @@ export const RideScreen: React.FC<Props> = ({ navigation, route }) => {
         )}
 
         {status === 'completed' ? (
-          <Button title={t('common.close')} onPress={goHome} />
+          <View>
+            {/* Оценка водителя после поездки */}
+            <Text style={styles.rateTitle}>{t('ride.rateTitle')}</Text>
+            <View style={styles.stars}>
+              {[1, 2, 3, 4, 5].map((i) => (
+                <Pressable key={i} onPress={() => setRating(i)} hitSlop={6}>
+                  <Text style={[styles.star, i <= rating && styles.starActive]}>
+                    ★
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+            <TextInput
+              style={styles.comment}
+              value={comment}
+              onChangeText={setComment}
+              placeholder={t('ride.commentPlaceholder')}
+              placeholderTextColor={colors.textMuted}
+            />
+            <Button
+              title={t('ride.rate')}
+              onPress={submitRating}
+              disabled={rating === 0}
+            />
+            <Button
+              title={t('common.close')}
+              variant="ghost"
+              onPress={goHome}
+              style={{ marginTop: spacing.xs }}
+            />
+          </View>
         ) : (
-          <Button
-            title={t('ride.cancel')}
-            variant="secondary"
-            onPress={goHome}
-          />
+          <View>
+            {/* Безопасность: SOS и «поделиться поездкой» */}
+            {ride && (
+              <View style={styles.safetyRow}>
+                <Pressable
+                  style={[styles.safetyBtn, styles.sosBtn]}
+                  onPress={shareSos}
+                >
+                  <Text style={styles.sosText}>🆘 {t('ride.sos')}</Text>
+                </Pressable>
+                <Pressable style={styles.safetyBtn} onPress={shareRide}>
+                  <Text style={styles.safetyText}>📤 {t('ride.share')}</Text>
+                </Pressable>
+              </View>
+            )}
+            <Button
+              title={t('ride.cancel')}
+              variant="secondary"
+              onPress={goHome}
+            />
+          </View>
         )}
       </View>
     </SafeAreaView>
@@ -199,4 +297,44 @@ const styles = StyleSheet.create({
   driverMeta: { fontSize: fontSize.sm, color: colors.textMuted, marginTop: 2 },
   driverBadge: { fontSize: fontSize.sm, color: colors.primary, marginTop: 4 },
   fare: { fontSize: fontSize.md, fontWeight: '800', color: colors.text },
+  safetyRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  safetyBtn: {
+    flex: 1,
+    height: 44,
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceAlt,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sosBtn: { backgroundColor: '#FBEAEA' },
+  sosText: { color: colors.danger, fontWeight: '800', fontSize: fontSize.sm },
+  safetyText: { color: colors.text, fontWeight: '700', fontSize: fontSize.sm },
+  rateTitle: {
+    fontSize: fontSize.md,
+    fontWeight: '800',
+    color: colors.text,
+    textAlign: 'center',
+  },
+  stars: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    marginVertical: spacing.sm,
+  },
+  star: { fontSize: 34, color: colors.border },
+  starActive: { color: colors.accent },
+  comment: {
+    height: 44,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    fontSize: fontSize.sm,
+    color: colors.text,
+    marginBottom: spacing.sm,
+  },
 });

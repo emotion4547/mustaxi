@@ -134,6 +134,7 @@ npm run build:android    # сборка APK в облаке
 |--------|-----------|
 | `YANDEX_MAPS_API_KEY` | JavaScript API (карта) |
 | `YANDEX_GEOCODER_API_KEY` | API Геокодера (поиск адреса) |
+| `YANDEX_ROUTING_API_KEY` | Routing API — реальный маршрут, км и ETA (без него — оценка по прямой) |
 
 Добавьте их в **Settings → Secrets and variables → Actions** и пересоберите.
 Для локального запуска: `YANDEX_MAPS_API_KEY=... YANDEX_GEOCODER_API_KEY=... npx expo start`.

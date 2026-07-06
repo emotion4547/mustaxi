@@ -43,6 +43,13 @@ export const storage = {
     await AsyncStorage.setItem(KEYS.history, JSON.stringify(next));
   },
 
+  /** Точечное обновление записи истории (например, оценка после поездки). */
+  async updateHistory(id: string, patch: Partial<RideRecord>): Promise<void> {
+    const list = await storage.getHistory();
+    const next = list.map((r) => (r.id === id ? { ...r, ...patch } : r));
+    await AsyncStorage.setItem(KEYS.history, JSON.stringify(next));
+  },
+
   // ── Сохранённые адреса ─────────────────────────────────────────────
 
   async getSavedAddresses(): Promise<SavedAddress[]> {

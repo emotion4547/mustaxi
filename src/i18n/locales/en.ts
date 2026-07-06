@@ -80,6 +80,14 @@ export const en: Translations = {
     cancel: 'Cancel ride',
     female: 'Female driver',
     male: 'Male driver',
+    share: 'Share',
+    sos: 'SOS',
+    shareMessage:
+      'I am riding with MusTaxi: {from} → {to}. Driver: {driver}, {car}, plate {plate}.',
+    sosMessage: 'SOS! I need help. I am in a taxi on route {from} → {to}.',
+    rateTitle: 'Rate your ride',
+    commentPlaceholder: 'Comment (optional)',
+    rate: 'Rate',
   },
   prayer: {
     title: 'Prayer times',
@@ -140,6 +148,12 @@ export const en: Translations = {
     driver: 'Driver',
     date: 'Date',
     status: 'Status',
+    receipt: 'Receipt',
+    base: 'Base fare',
+    distance: 'Distance ({km} km)',
+    total: 'Total',
+    share: 'Share receipt',
+    rating: 'Your rating',
   },
   profile: {
     title: 'Profile',

@@ -127,5 +127,12 @@ export interface RideRecord {
   preferences: RidePreferences;
   /** Класс авто (может отсутствовать в старых записях). */
   carClass?: CarClass;
+  /** Разбивка чека (для старых записей может отсутствовать). */
+  fareBase?: number;
+  fareDistance?: number;
+  distanceKm?: number;
+  /** Оценка водителя после поездки (1–5) и комментарий. */
+  rating?: number;
+  comment?: string;
   createdAt: number;
 }
