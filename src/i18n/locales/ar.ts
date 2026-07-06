@@ -34,6 +34,7 @@ export const ar: Translations = {
     to: 'إلى',
     myLocation: 'موقعي',
     yourAddress: 'عنوانك',
+    mosques: 'المساجد',
     supply: 'الوصول خلال {min} د',
     order: 'اطلب',
     searching: 'نبحث عن أقرب سائق…',
@@ -92,6 +93,10 @@ export const ar: Translations = {
     qibla: 'اتجاه القبلة',
     qiblaHint: 'القبلة: {deg}° من الشمال',
     compassHint: 'أدر هاتفك حتى يشير رمز 🕋 إلى الأعلى',
+    notifications: 'إشعارات الصلاة',
+    notificationsHint: 'تذكير بوقت كل صلاة',
+    notifBody: 'حان وقت الصلاة',
+    mosqueDefault: 'مسجد',
     nearbyMosque: 'أقرب مسجد',
     locationNeeded: 'اسمح بالوصول إلى الموقع لحساب مواقيت الصلاة',
     allowLocation: 'السماح بالموقع',
@@ -119,6 +124,12 @@ export const ar: Translations = {
   },
   map: {
     offline: 'الخريطة غير متاحة. تحقق من الاتصال بالإنترنت.',
+  },
+  ramadan: {
+    title: 'رمضان 🌙',
+    suhoor: 'السحور — قبل الفجر',
+    iftar: 'الإفطار — المغرب',
+    iftarAt: 'الإفطار في {time}',
   },
   history: {
     title: 'سجل الرحلات',

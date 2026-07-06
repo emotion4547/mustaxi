@@ -5,6 +5,7 @@ import * as Location from 'expo-location';
 
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
+import { Toggle } from '@/components/Toggle';
 import { QiblaCompass } from '@/components/QiblaCompass';
 import { useApp } from '@/store/AppContext';
 import { colors, fontSize, radius, spacing } from '@/theme';
@@ -14,6 +15,12 @@ import {
   type PrayerKey,
   type PrayerSchedule,
 } from '@/features/prayer/prayerTimes';
+import {
+  cancelPrayerNotifications,
+  ensureNotificationPermissions,
+  schedulePrayerNotifications,
+} from '@/features/prayer/notifications';
+import { storage } from '@/services/storage';
 import { mockPlaces } from '@/data/mockData';
 import type { LatLng } from '@/types';
 
@@ -27,12 +34,47 @@ const prayerOrder: PrayerKey[] = [
 ];
 
 export const PrayerScreen: React.FC = () => {
-  const { t, locale } = useApp();
+  const { t, locale, preferences, setPreferences } = useApp();
   const [permission, setPermission] = useState<boolean | null>(null);
   const [schedule, setSchedule] = useState<PrayerSchedule | null>(null);
+  const [point, setPoint] = useState<LatLng | null>(null);
+  const [notifEnabled, setNotifEnabled] = useState(false);
 
-  const load = async (point: LatLng) => {
-    setSchedule(computePrayerSchedule(point));
+  const load = async (p: LatLng) => {
+    setPoint(p);
+    setSchedule(computePrayerSchedule(p));
+  };
+
+  useEffect(() => {
+    storage.getSettings().then((s) => setNotifEnabled(s.prayerNotifications));
+  }, []);
+
+  /** Включение/выключение локальных напоминаний о намазе. */
+  const toggleNotifications = async (value: boolean) => {
+    try {
+      if (value) {
+        const ok = await ensureNotificationPermissions();
+        if (!ok || !point) return; // разрешение не выдано — остаёмся выкл.
+        await schedulePrayerNotifications(
+          point,
+          {
+            fajr: t('prayer.fajr'),
+            sunrise: t('prayer.sunrise'),
+            dhuhr: t('prayer.dhuhr'),
+            asr: t('prayer.asr'),
+            maghrib: t('prayer.maghrib'),
+            isha: t('prayer.isha'),
+          },
+          t('prayer.notifBody'),
+        );
+      } else {
+        await cancelPrayerNotifications();
+      }
+      setNotifEnabled(value);
+      await storage.setSettings({ prayerNotifications: value });
+    } catch {
+      // сбой планирования не должен ронять экран
+    }
   };
 
   const requestLocation = async () => {
@@ -122,6 +164,44 @@ export const PrayerScreen: React.FC = () => {
                   </View>
                 );
               })}
+            </Card>
+
+            {/* Уведомления о намазе */}
+            <Card style={styles.section}>
+              <Toggle
+                label={t('prayer.notifications')}
+                hint={t('prayer.notificationsHint')}
+                value={notifEnabled}
+                onValueChange={toggleNotifications}
+              />
+            </Card>
+
+            {/* Режим Рамадан */}
+            <Card style={styles.section}>
+              <Text style={styles.qiblaTitle}>{t('ramadan.title')}</Text>
+              <Toggle
+                label={t('order.fasting')}
+                value={preferences.fasting}
+                onValueChange={(fasting) =>
+                  setPreferences({ ...preferences, fasting })
+                }
+              />
+              {preferences.fasting && (
+                <>
+                  <View style={styles.prayerRow}>
+                    <Text style={styles.prayerName}>{t('ramadan.suhoor')}</Text>
+                    <Text style={styles.prayerTime}>
+                      {formatPrayerTime(schedule.times.fajr, locale)}
+                    </Text>
+                  </View>
+                  <View style={styles.prayerRow}>
+                    <Text style={styles.prayerName}>{t('ramadan.iftar')}</Text>
+                    <Text style={[styles.prayerTime, styles.prayerActive]}>
+                      {formatPrayerTime(schedule.times.maghrib, locale)}
+                    </Text>
+                  </View>
+                </>
+              )}
             </Card>
 
             {/* Ближайшая мечеть */}

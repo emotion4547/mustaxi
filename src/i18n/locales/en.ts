@@ -34,6 +34,7 @@ export const en: Translations = {
     to: 'To',
     myLocation: 'My location',
     yourAddress: 'Your address',
+    mosques: 'Mosques',
     supply: 'Arrival {min} min',
     order: 'Request',
     searching: 'Finding the nearest driver…',
@@ -92,6 +93,10 @@ export const en: Translations = {
     qibla: 'Qibla direction',
     qiblaHint: 'Qibla: {deg}° from north',
     compassHint: 'Turn your phone until the 🕋 marker points up',
+    notifications: 'Prayer notifications',
+    notificationsHint: 'Reminders for each prayer time',
+    notifBody: 'It is time for prayer',
+    mosqueDefault: 'Mosque',
     nearbyMosque: 'Nearest mosque',
     locationNeeded: 'Allow location access to calculate prayer times',
     allowLocation: 'Allow location',
@@ -119,6 +124,12 @@ export const en: Translations = {
   },
   map: {
     offline: 'Map unavailable. Check your internet connection.',
+  },
+  ramadan: {
+    title: 'Ramadan 🌙',
+    suhoor: 'Suhoor — before Fajr',
+    iftar: 'Iftar — Maghrib',
+    iftarAt: 'Iftar at {time}',
   },
   history: {
     title: 'Trip history',

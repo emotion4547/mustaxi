@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 import Constants from 'expo-constants';
 import { colors, radius } from '@/theme';
-import type { LatLng } from '@/types';
+import type { LatLng, Place } from '@/types';
 
 interface Props {
   pickup: LatLng;
@@ -13,6 +13,8 @@ interface Props {
   pickupBadge?: string | null;
   /** Геометрия реального маршрута; если нет — рисуется пунктирная прямая. */
   routePolyline?: LatLng[] | null;
+  /** Слой мечетей (маркеры 🕌); в подгонку области обзора не входят. */
+  mosques?: Place[] | null;
   /** Показывать кнопку «моё местоположение». */
   showLocate?: boolean;
   /**
@@ -37,6 +39,8 @@ const SHARED_CSS = `
   .badge .ico { color:#0A6B4E; margin-right:5px; }
   .car { width:36px; height:36px; border-radius:50%; background:#fff; border:2px solid #0A6B4E;
     box-shadow:0 2px 6px rgba(0,0,0,.35); display:flex; align-items:center; justify-content:center; font-size:20px; }
+  .mosque { width:30px; height:30px; border-radius:50%; background:#fff; border:2px solid #C9A227;
+    box-shadow:0 2px 5px rgba(0,0,0,.3); display:flex; align-items:center; justify-content:center; font-size:16px; }
 `;
 
 const PIN_SVG = (color: string) =>
@@ -71,6 +75,8 @@ const yandexHtml = (key: string) => `<!DOCTYPE html><html><head>
       '$[properties.svg]</div>');
     var CarLayout=ymaps.templateLayoutFactory.createClass(
       '<div style="position:absolute;transform:translate(-50%,-50%)"><div class="car">🚕</div></div>');
+    var MosqueLayout=ymaps.templateLayoutFactory.createClass(
+      '<div style="position:absolute;transform:translate(-50%,-50%)"><div class="mosque">🕌</div></div>');
     window.updateMap=function(d){
       if(d.pick){
         // Режим выбора точки: только начальное центрирование, без маркеров.
@@ -97,6 +103,11 @@ const yandexHtml = (key: string) => `<!DOCTYPE html><html><head>
       if(d.driver){ var dr=[d.driver.latitude,d.driver.longitude];
         map.geoObjects.add(new ymaps.Placemark(dr,{},{iconLayout:CarLayout,iconShape:{type:'Circle',coordinates:[0,0],radius:18}}));
         pts.push(dr); }
+      if(d.mosques&&d.mosques.length){
+        for(var i=0;i<d.mosques.length;i++){ var mq=d.mosques[i];
+          map.geoObjects.add(new ymaps.Placemark([mq.latitude,mq.longitude],{hintContent:mq.title||''},{iconLayout:MosqueLayout,iconShape:{type:'Circle',coordinates:[0,0],radius:15}}));
+        }
+      }
       if(pts.length===1) map.setCenter(pts[0],15,{duration:250});
       else if(pts.length>1) map.setBounds(ymaps.util.bounds.fromPoints(pts),{checkZoomRange:true,zoomMargin:70,duration:250});
     };
@@ -139,6 +150,7 @@ const LEAFLET_HTML = `<!DOCTYPE html><html><head>
     if(d.pickup){ last=[d.pickup.latitude,d.pickup.longitude]; layers.push(L.marker(last,{icon:pinIcon('#2E9E5B',d.pickupBadge)}).addTo(map)); pts.push(last); }
     if(d.destination){ var dd=[d.destination.latitude,d.destination.longitude]; layers.push(L.marker(dd,{icon:pinIcon('#D24B4B','')}).addTo(map)); pts.push(dd); }
     if(d.driver){ var dr=[d.driver.latitude,d.driver.longitude]; layers.push(L.marker(dr,{icon:L.divIcon({className:'',html:'<div class="car">🚕</div>',iconSize:[36,36],iconAnchor:[18,18]})}).addTo(map)); pts.push(dr); }
+    if(d.mosques&&d.mosques.length){ d.mosques.forEach(function(mq){ layers.push(L.marker([mq.latitude,mq.longitude],{icon:L.divIcon({className:'',html:'<div class="mosque">🕌</div>',iconSize:[30,30],iconAnchor:[15,15]})}).addTo(map)); }); }
     if(pts.length===1) map.setView(pts[0],15);
     else if(pts.length>1) map.fitBounds(pts,{padding:[60,70]});
   };
@@ -151,6 +163,7 @@ export const AppMap: React.FC<Props> = ({
   driver,
   pickupBadge,
   routePolyline,
+  mosques,
   showLocate = true,
   pickMode = false,
   onCenter,
@@ -169,6 +182,11 @@ export const AppMap: React.FC<Props> = ({
     driver: driver ?? null,
     pickupBadge: pickupBadge ?? '',
     routePolyline: routePolyline ?? null,
+    mosques: (mosques ?? []).map((m) => ({
+      latitude: m.location.latitude,
+      longitude: m.location.longitude,
+      title: m.title,
+    })),
     pick: pickMode,
   });
 

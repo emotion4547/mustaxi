@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -13,6 +13,11 @@ import { storage } from '@/services/storage';
 import { colors, fontSize, radius, spacing } from '@/theme';
 import { mockPlaces, pickDriver } from '@/data/mockData';
 import { KIND_GLYPHS } from '@/screens/SavedAddressesScreen';
+import { fetchNearbyMosques } from '@/features/prayer/mosques';
+import {
+  computePrayerSchedule,
+  formatPrayerTime,
+} from '@/features/prayer/prayerTimes';
 import type { Place, SavedAddress } from '@/types';
 import type { RootStackParamList } from '@/navigation/types';
 
@@ -21,10 +26,42 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 const SUPPLY_ETA = pickDriver('any').etaMinutes;
 
 export const HomeScreen: React.FC<Props> = ({ navigation }) => {
-  const { t, pickup, setPickup, destination, setDestination } = useApp();
+  const { t, locale, preferences, pickup, setPickup, destination, setDestination } =
+    useApp();
   const { location, granted } = useCurrentLocation();
   const [drawer, setDrawer] = useState(false);
   const [saved, setSaved] = useState<SavedAddress[]>([]);
+  const [showMosques, setShowMosques] = useState(false);
+  const [mosques, setMosques] = useState<Place[]>([]);
+
+  // Слой мечетей: загружаем при включении переключателя.
+  useEffect(() => {
+    let active = true;
+    if (!showMosques) {
+      setMosques([]);
+      return;
+    }
+    fetchNearbyMosques(
+      pickup?.location ?? location,
+      7,
+      t('prayer.mosqueDefault'),
+    ).then((list) => active && setMosques(list));
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showMosques]);
+
+  // Режим Рамадан: время ифтара (Магриб) для баннера.
+  const iftarTime = useMemo(() => {
+    if (!preferences.fasting) return null;
+    try {
+      const schedule = computePrayerSchedule(pickup?.location ?? location);
+      return formatPrayerTime(schedule.times.maghrib, locale);
+    } catch {
+      return null;
+    }
+  }, [preferences.fasting, pickup, location, locale]);
 
   // Сохранённые адреса обновляем при каждом возврате на экран.
   useFocusEffect(
@@ -58,6 +95,7 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
           pickup={pickup?.location ?? location}
           destination={destination?.location}
           pickupBadge={t('home.supply', { min: SUPPLY_ETA })}
+          mosques={mosques}
           style={styles.map}
         />
       </View>
@@ -77,8 +115,24 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
               {pickup?.title ?? t('home.myLocation')}
             </Text>
           </Pressable>
-          <View style={styles.menuBtn} />
+          {/* Переключатель слоя мечетей */}
+          <Pressable
+            style={[styles.menuBtn, showMosques && styles.mosqueBtnActive]}
+            onPress={() => setShowMosques((v) => !v)}
+            accessibilityLabel={t('home.mosques')}
+          >
+            <Text style={styles.menuIcon}>🕌</Text>
+          </Pressable>
         </View>
+
+        {/* Баннер Рамадана: время ифтара */}
+        {iftarTime && (
+          <View style={styles.iftarPill}>
+            <Text style={styles.iftarText}>
+              🌙 {t('ramadan.iftarAt', { time: iftarTime })}
+            </Text>
+          </View>
+        )}
       </SafeAreaView>
 
       {/* Нижняя «шторка» */}
@@ -178,6 +232,24 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   menuIcon: { fontSize: 22, color: colors.text },
+  mosqueBtnActive: {
+    backgroundColor: colors.primaryLight,
+    borderWidth: 2,
+    borderColor: colors.primary,
+  },
+  iftarPill: {
+    alignSelf: 'center',
+    marginTop: spacing.sm,
+    backgroundColor: colors.primaryDark,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+  },
+  iftarText: {
+    color: colors.textInverse,
+    fontSize: fontSize.sm,
+    fontWeight: '700',
+  },
   address: {
     flex: 1,
     alignItems: 'center',

@@ -32,6 +32,7 @@ export const ru = {
     to: 'Куда',
     myLocation: 'Моё местоположение',
     yourAddress: 'Ваш адрес',
+    mosques: 'Мечети',
     supply: 'Подача {min} мин',
     order: 'Заказать',
     searching: 'Ищем ближайшего водителя…',
@@ -90,6 +91,10 @@ export const ru = {
     qibla: 'Направление Киблы',
     qiblaHint: 'Кибла: {deg}° от севера',
     compassHint: 'Поверните телефон, пока указатель 🕋 не окажется вверху',
+    notifications: 'Уведомления о намазе',
+    notificationsHint: 'Напоминания о времени каждой молитвы',
+    notifBody: 'Наступило время молитвы',
+    mosqueDefault: 'Мечеть',
     nearbyMosque: 'Ближайшая мечеть',
     locationNeeded: 'Разрешите доступ к геолокации для расчёта времени намаза',
     allowLocation: 'Разрешить геолокацию',
@@ -117,6 +122,12 @@ export const ru = {
   },
   map: {
     offline: 'Карта недоступна. Проверьте подключение к интернету.',
+  },
+  ramadan: {
+    title: 'Рамадан 🌙',
+    suhoor: 'Сухур — до Фаджра',
+    iftar: 'Ифтар — Магриб',
+    iftarAt: 'Ифтар в {time}',
   },
   history: {
     title: 'История поездок',

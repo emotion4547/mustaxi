@@ -5,7 +5,18 @@ const KEYS = {
   session: 'mustaxi.session',
   history: 'mustaxi.history',
   addresses: 'mustaxi.addresses',
+  settings: 'mustaxi.settings',
 } as const;
+
+/** Пользовательские настройки приложения. */
+export interface AppSettings {
+  /** Включены ли уведомления о времени намаза. */
+  prayerNotifications: boolean;
+}
+
+const defaultSettings: AppSettings = {
+  prayerNotifications: false,
+};
 
 export const storage = {
   async saveSession(session: AuthSession): Promise<void> {
@@ -62,5 +73,20 @@ export const storage = {
       KEYS.addresses,
       JSON.stringify(list.filter((a) => a.id !== id)),
     );
+  },
+
+  // ── Настройки ──────────────────────────────────────────────────────
+
+  async getSettings(): Promise<AppSettings> {
+    const raw = await AsyncStorage.getItem(KEYS.settings);
+    return raw
+      ? { ...defaultSettings, ...(JSON.parse(raw) as Partial<AppSettings>) }
+      : defaultSettings;
+  },
+
+  async setSettings(patch: Partial<AppSettings>): Promise<AppSettings> {
+    const next = { ...(await storage.getSettings()), ...patch };
+    await AsyncStorage.setItem(KEYS.settings, JSON.stringify(next));
+    return next;
   },
 };

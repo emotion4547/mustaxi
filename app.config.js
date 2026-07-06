@@ -44,7 +44,7 @@ module.exports = {
     web: {
       favicon: './assets/favicon.png',
     },
-    plugins: ['expo-location'],
+    plugins: ['expo-location', 'expo-notifications'],
     extra: {
       supportedLocales: ['ru', 'ar', 'en'],
       yandex: {
